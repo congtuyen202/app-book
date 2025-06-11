@@ -61,10 +61,7 @@
               <RadioGroupItem :id="themeDarkId" value="dark" />
               <Label :for="themeDarkId" class="font-normal">Dark</Label>
             </div>
-            <div class="flex items-center space-x-2">
-              <RadioGroupItem :id="themeSystemId" value="system" />
-              <Label :for="themeSystemId" class="font-normal">System</Label>
-            </div>
+            <!-- System theme option removed -->
           </RadioGroup>
         </div>
          <Button variant="outline" @click="handleResetSettings" class="mt-4">Reset to Defaults</Button>
@@ -112,18 +109,19 @@ const handleResetSettings = () => {
 
 // The theme application logic is primarily handled within the composable.
 // An onMounted hook here to ensure initial theme on page load might be redundant
-// if the composable handles it effectively, but can be kept for explicit page-level effect.
+// if the composable handles it effectively. The composable should handle initial load.
 onMounted(() => {
-  if (typeof window !== 'undefined') {
-    const applyCurrentTheme = () => {
-      if (currentSettings.value.theme === 'dark' || (currentSettings.value.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    };
-    applyCurrentTheme();
-    // The watcher in the composable will handle changes.
-  }
+  // if (typeof window !== 'undefined') {
+  //   const applyCurrentTheme = () => {
+  //     if (currentSettings.value.theme === 'dark') { // Simplified: no 'system'
+  //       document.documentElement.classList.add('dark');
+  //     } else {
+  //       document.documentElement.classList.remove('dark');
+  //     }
+  //   };
+  //   applyCurrentTheme();
+  // }
+  // The watcher in the composable will handle changes.
+  // The initial application is also in the composable.
 });
 </script>
