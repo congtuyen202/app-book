@@ -15,7 +15,7 @@
                     @click="minimized = false"
                     title="Open Chat"
                     aria-label="Open chat window">
-                    <LucideMessageCircle class="w-7 h-7 sm:w-8 sm:h-8" />
+                    <IconMessageCircle class="w-7 h-7 sm:w-8 sm:h-8" />
                 </Button>
             </Transition>
 
@@ -25,13 +25,13 @@
                     class="w-[calc(100vw-24px)] sm:w-[450px] md:w-[450px] h-[calc(100vh-100px)] max-h-full sm:max-h-[75vh] flex flex-col shadow-2xl border-border">
                     <CardHeader class="flex flex-row items-center justify-between p-3 sm:p-4 border-b">
                         <div class="flex items-center gap-2 sm:gap-2.5">
-                            <LucideMessageCircle class="w-6 h-6 sm:w-7 sm:h-7 text-primary cursor-pointer hover:opacity-80"
+                            <IconMessageCircle class="w-6 h-6 sm:w-7 sm:h-7 text-primary cursor-pointer hover:opacity-80"
                                 @click="showInfo = true" title="Chat Bot Information" />
                             <CardTitle class="text-base sm:text-lg font-semibold">Chat Bot</CardTitle>
                         </div>
                         <Button variant="ghost" size="icon" class="text-muted-foreground hover:text-foreground"
                             @click="minimized = true" title="Minimize" aria-label="Minimize chat window">
-                            <LucideChevronDown class="w-5 h-5 sm:w-6 sm:h-6" />
+                            <IconChevronDown class="w-5 h-5 sm:w-6 sm:h-6" />
                         </Button>
                     </CardHeader>
 
@@ -121,12 +121,12 @@
                         <Button type="button" variant="outline" size="icon"
                             class="h-10 w-10 sm:h-11 sm:w-11 text-muted-foreground hover:text-foreground disabled:opacity-50"
                             @click="sendImage" title="Send image (not supported)" :disabled="isTyping" aria-label="Send image">
-                            <LucideImage class="w-5 h-5" />
+                            <IconImage class="w-5 h-5" />
                         </Button>
                         <Button type="submit" :disabled="!prompt.trim() || isTyping"
                             class="h-10 w-16 sm:h-11 sm:w-20 disabled:opacity-60"
                             title="Send message" aria-label="Send message" @click="handleSendMessage">
-                            <LucideSend class="w-5 h-5" />
+                            <IconSend class="w-5 h-5" />
                         </Button>
                     </CardFooter>
                 </Card>
@@ -140,7 +140,7 @@
                 @click.self="showInfo = false" aria-modal="true" role="dialog">
                 <Card class="w-full max-w-md bg-card text-card-foreground transform transition-all duration-300 ease-out">
                     <CardHeader class="items-center text-center pb-4">
-                        <LucideMessageCircle class="w-12 h-12 text-primary mb-2" />
+                        <IconMessageCircle class="w-12 h-12 text-primary mb-2" />
                         <CardTitle class="text-xl">Chat Bot Thông Minh</CardTitle>
                         <CardDescription>AI Model: Gemini (Google)</CardDescription>
                     </CardHeader>
@@ -167,8 +167,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { ref, nextTick, watch, Ref } from 'vue';
 // Đảm bảo bạn đã cài đặt lucide-vue-next: npm install lucide-vue-next
-// Lucide icons are auto-imported by nuxt-lucide-icons module, but explicit import can be kept for clarity or if issues arise.
-// import { LucideSend, LucideImage, LucideChevronDown, LucideMessageCircle } from 'lucide-vue-next';
+// Lucide icons are auto-imported by nuxt-lucide-icons module as Icon<Name>
 
 // Components AppHeader và AppFooter được giả định là đã được import toàn cục hoặc trong script này nếu cần
 // AppHeader, AppFooter, NuxtLink, Transition, TransitionGroup are auto-imported by Nuxt
