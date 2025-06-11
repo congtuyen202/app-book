@@ -5,14 +5,14 @@ export interface ReaderSettings {
   fontFamily: 'Inter' | 'Merriweather' | 'Roboto Mono';
   fontSize: number; // in px
   lineHeight: number; // as a multiplier, e.g., 1.5
-  theme: 'light' | 'dark' | 'system';
+  theme: 'light' | 'dark';
 }
 
 const defaultSettings: ReaderSettings = {
   fontFamily: 'Inter',
   fontSize: 18,
   lineHeight: 1.6,
-  theme: 'system',
+  theme: 'light',
 };
 
 const settingsKey = 'readerAppSettings';
@@ -36,9 +36,10 @@ export const useReaderSettings = () => {
           if (typeof parsed.lineHeight === 'number' && parsed.lineHeight >= 1.0 && parsed.lineHeight <= 3.0) {
             validatedSettings.lineHeight = parsed.lineHeight;
           }
-          if (parsed.theme && ['light', 'dark', 'system'].includes(parsed.theme)) {
+          if (parsed.theme && ['light', 'dark'].includes(parsed.theme)) { // Only light/dark
             validatedSettings.theme = parsed.theme;
           }
+          // If stored theme was 'system', it will default to 'light' from defaultSettings spread
           return validatedSettings;
         } catch (e) {
           console.error("Failed to parse settings from localStorage or invalid data", e);
@@ -51,7 +52,7 @@ export const useReaderSettings = () => {
   const settings = useState<ReaderSettings>(settingsKey, getInitialSettings);
 
   const applyTheme = (themeValue: ReaderSettings['theme']) => {
-    if (themeValue === 'dark' || (themeValue === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    if (themeValue === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
@@ -67,19 +68,7 @@ export const useReaderSettings = () => {
 
     // Initial theme application
     applyTheme(settings.value.theme);
-
-    // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const systemThemeListener = (e: MediaQueryListEvent) => {
-        if (settings.value.theme === 'system') {
-             applyTheme('system'); // Re-apply system to react to change
-        }
-    };
-    mediaQuery.addEventListener('change', systemThemeListener);
-
-    // Nuxt specific: clean up event listener when app is unmounted (though composable might outlive component)
-    // For a true SPA lifecycle, this might need to be in a plugin or on a root component.
-    // However, useState and watch are managed by Nuxt/Vue lifecycle.
+    // System theme media query listener is removed
   }
 
   const resetSettings = () => {
