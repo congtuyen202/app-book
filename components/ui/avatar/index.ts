@@ -1,3 +1,3 @@
-export { default as Avatar } from './Avatar.vue'
-export { default as AvatarFallback } from './AvatarFallback.vue'
-export { default as AvatarImage } from './AvatarImage.vue'
+export { default as Avatar } from './_Avatar.vue'
+export { default as AvatarFallback } from './_AvatarFallback.vue'
+export { default as AvatarImage } from './_AvatarImage.vue'
