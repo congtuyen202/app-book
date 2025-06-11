@@ -165,7 +165,8 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { ref, nextTick, watch, Ref } from 'vue';
+import { ref, nextTick, watch } from 'vue';
+import type { Ref } from 'vue';
 // Đảm bảo bạn đã cài đặt lucide-vue-next: npm install lucide-vue-next
 // Lucide icons are auto-imported by nuxt-lucide-icons module as Icon<Name>
 
