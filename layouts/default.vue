@@ -1,194 +1,217 @@
 <template>
-    <div class="font-main w-full relative min-h-screen bg-slate-50 flex flex-col">
+    <div class="font-main w-full relative min-h-screen bg-background flex flex-col">
         <AppHeader />
         <main class="pt-16 flex-grow">
             <slot />
         </main>
         <AppFooter />
+        <!-- Chat Popup Button -->
         <div class="fixed bottom-0 right-0 p-3 sm:p-5 z-[1000]">
             <Transition name="pop-chat">
-                <button v-if="minimized"
-                    class="bg-orange-500 rounded-full w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shadow-xl hover:bg-orange-600 transition-all duration-300 ease-out transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2"
-                    @click="minimized = false" title="Mở chat" aria-label="Mở cửa sổ chat">
-                    <LucideMessageCircle class="w-7 h-7 sm:w-8 sm:h-8 text-white" />
-                </button>
+                 <Button v-if="minimized"
+                    variant="default"
+                    size="icon"
+                    class="rounded-full w-14 h-14 sm:w-16 sm:h-16 shadow-lg hover:scale-110 transition-transform duration-300 ease-out"
+                    @click="minimized = false"
+                    title="Open Chat"
+                    aria-label="Open chat window">
+                    <LucideMessageCircle class="w-7 h-7 sm:w-8 sm:h-8" />
+                </Button>
             </Transition>
 
+            <!-- Chat Window -->
             <Transition name="slide-up-chat">
-                <div v-if="!minimized"
-                    class="w-[calc(100vw-24px)] sm:w-[600px] md:w-[600px] h-[calc(100vh-100px)] max-h-full sm:max-h-[85vh] bg-orange-50 rounded-xl shadow-2xl flex flex-col border-2 border-orange-400 overflow-hidden">
-                    <div
-                        class="p-3.5 sm:p-4 border-b border-orange-300 flex items-center font-semibold text-orange-800 justify-between bg-orange-100">
-                        <div class="flex items-center gap-2.5">
-                            <LucideMessageCircle
-                                class="w-7 h-7 sm:w-8 sm:h-8 text-orange-600 cursor-pointer hover:text-orange-700 transition-colors"
-                                @click="showInfo = true" title="Thông tin Chat Bot" />
-                            <span class="text-base sm:text-lg">Chat Bot Tư Vấn</span>
+                <Card v-if="!minimized"
+                    class="w-[calc(100vw-24px)] sm:w-[450px] md:w-[450px] h-[calc(100vh-100px)] max-h-full sm:max-h-[75vh] flex flex-col shadow-2xl border-border">
+                    <CardHeader class="flex flex-row items-center justify-between p-3 sm:p-4 border-b">
+                        <div class="flex items-center gap-2 sm:gap-2.5">
+                            <LucideMessageCircle class="w-6 h-6 sm:w-7 sm:h-7 text-primary cursor-pointer hover:opacity-80"
+                                @click="showInfo = true" title="Chat Bot Information" />
+                            <CardTitle class="text-base sm:text-lg font-semibold">Chat Bot</CardTitle>
                         </div>
-                        <button
-                            class="p-1.5 rounded-md hover:bg-orange-200/70 transition-colors text-orange-600 hover:text-orange-700"
-                            @click="minimized = true" title="Thu nhỏ" aria-label="Thu nhỏ cửa sổ chat">
+                        <Button variant="ghost" size="icon" class="text-muted-foreground hover:text-foreground"
+                            @click="minimized = true" title="Minimize" aria-label="Minimize chat window">
                             <LucideChevronDown class="w-5 h-5 sm:w-6 sm:h-6" />
-                        </button>
-                    </div>
+                        </Button>
+                    </CardHeader>
 
-                    <div ref="chatBody" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-white">
+                    <CardContent ref="chatBody" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-background">
                         <TransitionGroup name="message-item" tag="div">
                             <div v-for="msg in messages" :key="msg.id" :class="[
-                                'rounded-xl py-2 px-3.5 shadow-md w-max max-w-[85%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed mb-4 break-words',
+                                'rounded-lg py-2 px-3 shadow-sm w-max max-w-[85%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed mb-3 break-words',
                                 msg.role === 'user'
-                                    ? 'bg-orange-500 text-white ml-auto rounded-br-none'
-                                    : 'bg-slate-100 text-slate-800 mr-auto rounded-bl-none border border-slate-200',
+                                    ? 'bg-primary text-primary-foreground ml-auto rounded-br-none'
+                                    : 'bg-muted text-muted-foreground mr-auto rounded-bl-none border',
                             ]">
                                 <div class="whitespace-pre-wrap">{{ msg.text }}</div>
                                 <div class="whitespace-pre-wrap">{{ msg.noi_dung }}</div>
 
+                                <!-- Book suggestions in messages -->
                                 <div v-if="msg.role === 'bot' && msg.books && msg.books.length > 0"
-                                    class="mt-3 space-y-3">
+                                    class="mt-2.5 space-y-2">
                                     <div v-for="(book, bIdx) in msg.books" :key="`book-${bIdx}`"
                                         @click="book.suggestions ? useSuggestion(book.suggestions) : '' "
-                                        class="p-2.5 border border-orange-200 rounded-lg bg-orange-50/50 text-xs text-slate-700" 
-                                        :class="{'cursor-pointer hover:bg-orange-200 hover:shadow-md transition-all duration-200 ease-out text-left': book.suggestions}">
-                                        <p class="font-semibold text-orange-700">
+                                        class="p-2 border border-border rounded-md bg-background/50 text-xs text-foreground"
+                                        :class="{'cursor-pointer hover:bg-accent hover:shadow-sm transition-all duration-200 ease-out text-left': book.suggestions}">
+                                        <p class="font-semibold text-primary/90">
                                             {{ book.tieu_de }} - {{ book.tac_gia }}
                                         </p>
-                                        <p class="mt-1">
-                                            <span class="font-medium">Thể loại:</span>
-                                            {{ book.the_loai }}
-                                        </p>
-                                        <p class="mt-1">
-                                            <span class="font-medium">Mô tả:</span>
-                                            {{ book.mo_ta_ngan_gon }}
-                                        </p>
-                                        <p class="mt-1">
-                                            <span class="font-medium">Lý do phù hợp:</span>
-                                            {{ book.ly_do_phu_hop }}
-                                        </p>
+                                        <p class="mt-0.5"><span class="font-medium">Thể loại:</span> {{ book.the_loai }}</p>
+                                        <p class="mt-0.5"><span class="font-medium">Mô tả:</span> {{ book.mo_ta_ngan_gon }}</p>
+                                        <p class="mt-0.5"><span class="font-medium">Lý do:</span> {{ book.ly_do_phu_hop }}</p>
                                     </div>
                                 </div>
                                 
+                                <!-- Quick reply buttons for bot messages -->
                                 <div v-if="msg.role === 'bot' && msg.bookSuggestions && msg.bookSuggestions.length > 0"
-                                    class="mt-2.5 flex flex-col items-start gap-2">
-                                    <button v-for="(suggest, sidx) in msg.bookSuggestions" :key="sidx"
-                                        class="rounded-full bg-orange-100 px-3.5 py-1.5 text-xs sm:text-sm text-orange-700 border border-orange-300 hover:bg-orange-200 hover:shadow-md transition-all duration-200 ease-out cursor-pointer text-left"
-                                        @click="useSuggestion(suggest.fullText || suggest)">
-                                        {{ suggest.display || suggest }}
-                                    </button>
+                                    class="mt-2 flex flex-wrap gap-1.5">
+                                    <Button v-for="(suggest, sidx) in msg.bookSuggestions" :key="`bs-${sidx}`"
+                                        variant="outline" size="sm"
+                                        class="text-xs h-auto py-1 px-2.5"
+                                        @click="useSuggestion(suggest.fullText || typeof suggest === 'string' ? suggest : suggest.display)">
+                                        {{ typeof suggest === 'string' ? suggest : suggest.display }}
+                                    </Button>
                                 </div>
-                                <ul v-if="msg.role === 'bot' && msg.suggestions && msg.suggestions.length > 0"
-                                    class="mt-2.5 flex flex-col items-start gap-2 list-disc list-inside text-orange-700 text-xs sm:text-sm">
-                                    <li v-for="(suggest, sidx) in msg.suggestions" :key="sidx">
-                                        {{ suggest.display || suggest }}
+                                <ul v-if="msg.role === 'bot' && msg.suggestions && msg.suggestions.length > 0 && !(msg.bookSuggestions && msg.bookSuggestions.length >0)"
+                                    class="mt-2 flex flex-wrap gap-1.5 list-none p-0">
+                                    <li v-for="(suggest, sidx) in msg.suggestions" :key="`s-${sidx}`">
+                                         <Button variant="outline" size="sm"
+                                            class="text-xs h-auto py-1 px-2.5"
+                                            @click="useSuggestion(typeof suggest === 'string' ? suggest : suggest.fullText || suggest.display)">
+                                            {{ typeof suggest === 'string' ? suggest : suggest.display }}
+                                        </Button>
                                     </li>
                                 </ul>
                             </div>
                         </TransitionGroup>
+                         <!-- Typing Indicator -->
                         <Transition name="message-item">
                             <div v-if="isTyping" key="typing-indicator"
-                                class="rounded-xl py-2 px-3.5 shadow-md w-max max-w-[85%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed mb-4 bg-slate-100 text-slate-800 mr-auto rounded-bl-none border border-slate-200 flex items-center space-x-1.5">
-                                <div class="typing-dot"></div>
-                                <div class="typing-dot" style="animation-delay: 0.2s;"></div>
-                                <div class="typing-dot" style="animation-delay: 0.4s;"></div>
+                                class="rounded-lg py-2 px-3.5 shadow-sm w-max max-w-[85%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed mb-3 bg-muted text-muted-foreground mr-auto rounded-bl-none border flex items-center space-x-1.5">
+                                <div class="typing-dot bg-primary"></div>
+                                <div class="typing-dot bg-primary" style="animation-delay: 0.2s;"></div>
+                                <div class="typing-dot bg-primary" style="animation-delay: 0.4s;"></div>
                             </div>
                         </Transition>
+                        <!-- Welcome Message & Initial Suggestions -->
                         <Transition name="message-item">
-                            <div v-if="messages.length === 0" key="welcome-message"
-                                class="rounded-xl py-2 px-3.5 shadow-md w-max max-w-[85%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed mb-4 bg-slate-100 text-slate-800 mr-auto rounded-bl-none border border-slate-200">
-                                <div class="font-semibold mb-2">Xin chào! 👋 Tôi là Chat Bot Tư Vấn Sách.</div>
-                                <div>Bạn muốn tìm sách gì hôm nay? Hãy chọn một gợi ý hoặc đặt câu hỏi cho tôi nhé:
-                                </div>
-                                <div class="mt-3 flex flex-col items-start gap-2">
-                                    <button
-                                        class="rounded-full bg-orange-100 px-3.5 py-1.5 text-xs sm:text-sm text-orange-700 border border-orange-300 hover:bg-orange-200 hover:shadow-md transition-all duration-200 ease-out cursor-pointer text-left"
-                                        @click="useSuggestion('Tôi thích thể loại sách kinh tế chính trị, bạn có thể gợi ý cho tôi không?')">
-                                        Tôi thích thể loại sách kinh tế chính trị, bạn có thể gợi ý cho tôi không?
-                                    </button>
-                                    <button
-                                        class="rounded-full bg-orange-100 px-3.5 py-1.5 text-xs sm:text-sm text-orange-700 border border-orange-300 hover:bg-orange-200 hover:shadow-md transition-all duration-200 ease-out cursor-pointer text-left"
-                                        @click="useSuggestion('Tôi quan tâm đến sách của tác giả Nguyễn Nhật Ánh, bạn có thể giới thiệu không?')">
-                                        Tôi quan tâm đến sách của tác giả Nguyễn Nhật Ánh, bạn có thể giới thiệu không?
-                                    </button>
-                                    <button
-                                        class="rounded-full bg-orange-100 px-3.5 py-1.5 text-xs sm:text-sm text-orange-700 border border-orange-300 hover:bg-orange-200 hover:shadow-md transition-all duration-200 ease-out cursor-pointer text-left"
-                                        @click="useSuggestion('Tôi muốn tìm sách phù hợp với lứa tuổi thiếu nhi, bạn có gợi ý nào không?')">
-                                        Tôi muốn tìm sách phù hợp với lứa tuổi thiếu nhi, bạn có gợi ý nào không?
-                                    </button>
+                            <div v-if="messages.length === 0 && !isTyping" key="welcome-message"
+                                class="rounded-lg py-2.5 px-3.5 shadow-sm w-max max-w-[90%] text-sm sm:text-base leading-relaxed mb-3 bg-muted text-muted-foreground mr-auto rounded-bl-none border">
+                                <div class="font-semibold mb-1.5">Xin chào! 👋 Tôi là Chat Bot Tư Vấn Sách.</div>
+                                <div>Bạn muốn tìm sách gì hôm nay? Hãy chọn một gợi ý hoặc đặt câu hỏi cho tôi nhé:</div>
+                                <div class="mt-2.5 flex flex-col items-start gap-2">
+                                    <Button variant="outline" size="sm" class="text-xs h-auto py-1 px-2.5 text-left" @click="useSuggestion('Tôi thích thể loại sách kinh tế chính trị, bạn có thể gợi ý cho tôi không?')">
+                                        Gợi ý sách kinh tế chính trị?
+                                    </Button>
+                                    <Button variant="outline" size="sm" class="text-xs h-auto py-1 px-2.5 text-left" @click="useSuggestion('Tôi quan tâm đến sách của tác giả Nguyễn Nhật Ánh, bạn có thể giới thiệu không?')">
+                                        Sách của Nguyễn Nhật Ánh?
+                                    </Button>
+                                    <Button variant="outline" size="sm" class="text-xs h-auto py-1 px-2.5 text-left" @click="useSuggestion('Tôi muốn tìm sách phù hợp với lứa tuổi thiếu nhi, bạn có gợi ý nào không?')">
+                                        Sách cho thiếu nhi?
+                                    </Button>
                                 </div>
                             </div>
                         </Transition>
-                    </div>
+                    </CardContent>
 
-                    <form @submit.prevent="handleSendMessage"
-                        class="p-3 sm:p-4 border-t border-orange-300 flex items-center gap-2 sm:gap-3 bg-orange-50">
-                        <input v-model="prompt" :disabled="isTyping"
-                            class="flex-1 rounded-lg border border-orange-300 px-3.5 py-2.5 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow"
-                            placeholder="Nhập tin nhắn..." aria-label="Nhập tin nhắn chat" />
-                        <button type="button"
-                            class="p-2 sm:p-2.5 rounded-lg bg-orange-200 hover:bg-orange-300/80 transition-colors text-orange-600 hover:text-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            @click="sendImage" title="Gửi ảnh (chưa hỗ trợ)" :disabled="isTyping" aria-label="Gửi ảnh">
-                            <LucideImage class="w-5 h-5 sm:w-6 sm:h-6" />
-                        </button>
-                        <button type="submit" :disabled="!prompt.trim() || isTyping"
-                            class="p-2 sm:p-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 transition-colors text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                            title="Gửi tin nhắn" aria-label="Gửi tin nhắn">
-                            <LucideSend class="w-5 h-5 sm:w-6 sm:h-6" />
-                        </button>
-                    </form>
-                </div>
+                    <CardFooter class="p-2 sm:p-3 border-t flex items-center gap-1.5 sm:gap-2">
+                        <Input v-model="prompt" :disabled="isTyping"
+                            class="flex-1 text-sm sm:text-base py-2 px-3 h-10 sm:h-11"
+                            placeholder="Nhập tin nhắn..." aria-label="Chat message input" @keyup.enter="handleSendMessage" />
+                        <Button type="button" variant="outline" size="icon"
+                            class="h-10 w-10 sm:h-11 sm:w-11 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                            @click="sendImage" title="Send image (not supported)" :disabled="isTyping" aria-label="Send image">
+                            <LucideImage class="w-5 h-5" />
+                        </Button>
+                        <Button type="submit" :disabled="!prompt.trim() || isTyping"
+                            class="h-10 w-16 sm:h-11 sm:w-20 disabled:opacity-60"
+                            title="Send message" aria-label="Send message" @click="handleSendMessage">
+                            <LucideSend class="w-5 h-5" />
+                        </Button>
+                    </CardFooter>
+                </Card>
             </Transition>
         </div>
 
+        <!-- Info Modal -->
         <Transition name="modal-fade">
             <div v-if="showInfo"
-                class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[1001] p-4"
+                class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1001] p-4"
                 @click.self="showInfo = false" aria-modal="true" role="dialog">
-                <div
-                    class="bg-white rounded-xl p-6 sm:p-8 shadow-xl max-w-md w-full transform transition-all duration-300 ease-out">
-                    <div class="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                        <LucideMessageCircle
-                            class="w-12 h-12 sm:w-14 sm:h-14 text-orange-500 bg-orange-100 rounded-full border-2 border-orange-300 p-2 sm:p-2.5" />
-                        <div>
-                            <h3 class="font-bold text-lg sm:text-xl text-orange-700">Chat Bot Thông Minh</h3>
-                            <p class="text-xs sm:text-sm text-orange-500">AI Model: Gemini (Google)</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-700 text-sm sm:text-base">
-                        Đây là trợ lý AI sử dụng mô hình Gemini của Google, được thiết kế để tư vấn và gợi ý sách cho
-                        bạn.
-                        Hãy thoải mái đặt câu hỏi hoặc chia sẻ sở thích của bạn nhé!
-                    </p>
-                    <button
-                        class="mt-6 sm:mt-8 w-full py-2.5 sm:py-3 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2"
-                        @click="showInfo = false" aria-label="Đóng thông tin chatbot">
-                        Đã hiểu
-                    </button>
-                </div>
+                <Card class="w-full max-w-md bg-card text-card-foreground transform transition-all duration-300 ease-out">
+                    <CardHeader class="items-center text-center pb-4">
+                        <LucideMessageCircle class="w-12 h-12 text-primary mb-2" />
+                        <CardTitle class="text-xl">Chat Bot Thông Minh</CardTitle>
+                        <CardDescription>AI Model: Gemini (Google)</CardDescription>
+                    </CardHeader>
+                    <CardContent class="text-sm text-center">
+                        <p>
+                            Đây là trợ lý AI sử dụng mô hình Gemini của Google, được thiết kế để tư vấn và gợi ý sách cho bạn.
+                            Hãy thoải mái đặt câu hỏi hoặc chia sẻ sở thích của bạn nhé!
+                        </p>
+                    </CardContent>
+                    <CardFooter>
+                        <Button class="w-full mt-2" @click="showInfo = false" aria-label="Close chat information modal">
+                            Đã hiểu
+                        </Button>
+                    </CardFooter>
+                </Card>
             </div>
         </Transition>
     </div>
 </template>
 
-<script setup>
-import { ref, nextTick, watch } from 'vue';
+<script setup lang="ts">
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { ref, nextTick, watch, Ref } from 'vue';
 // Đảm bảo bạn đã cài đặt lucide-vue-next: npm install lucide-vue-next
-import { LucideSend, LucideImage, LucideChevronDown, LucideMessageCircle } from 'lucide-vue-next';
+// Lucide icons are auto-imported by nuxt-lucide-icons module, but explicit import can be kept for clarity or if issues arise.
+// import { LucideSend, LucideImage, LucideChevronDown, LucideMessageCircle } from 'lucide-vue-next';
 
 // Components AppHeader và AppFooter được giả định là đã được import toàn cục hoặc trong script này nếu cần
-// import AppHeader from '~/components/AppHeader.vue';
-// import AppFooter from '~/components/AppFooter.vue';
+// AppHeader, AppFooter, NuxtLink, Transition, TransitionGroup are auto-imported by Nuxt
 
-const prompt = ref('');
-const messages = ref([]); // Mỗi message nên có { id: uniqueId, role: 'user'/'bot', text: '...', suggestions: [], books: [] }
-const minimized = ref(true); // Mặc định thu nhỏ
-const showInfo = ref(false);
-const chatBody = ref(null); // Để tự động cuộn
-const isTyping = ref(false); // Trạng thái AI đang soạn thảo
+interface MessageBook {
+  tieu_de: string;
+  tac_gia: string;
+  the_loai: string;
+  mo_ta_ngan_gon: string;
+  ly_do_phu_hop: string;
+  suggestions?: string;
+}
+
+interface MessageSuggestion {
+  display: string;
+  fullText: string;
+}
+
+// Combined type for suggestions to match existing logic
+type SuggestionItem = string | { display: string; fullText?: string };
+
+interface Message {
+  id: string;
+  role: 'user' | 'bot';
+  text?: string;
+  noi_dung?: string;
+  books?: MessageBook[];
+  bookSuggestions?: MessageSuggestion[];
+  suggestions?: SuggestionItem[];
+}
+
+const prompt: Ref<string> = ref('');
+const messages: Ref<Message[]> = ref([]);
+const minimized: Ref<boolean> = ref(true);
+const showInfo: Ref<boolean> = ref(false);
+const chatBody: Ref<HTMLElement | null> = ref(null);
+const isTyping: Ref<boolean> = ref(false);
 
 // Hàm tạo ID duy nhất đơn giản cho tin nhắn (quan trọng cho key của v-for và TransitionGroup)
-const generateUniqueId = () => `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+const generateUniqueId = (): string => `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
 // Hàm sinh gợi ý hợp lý cho chatbot về sách
-function extractFallbackSuggestions(replyText) {
+function extractFallbackSuggestions(replyText?: string | null): string[] {
     if (!replyText) {
         return [
             'Bạn muốn tìm sách thuộc thể loại nào?',
@@ -196,7 +219,7 @@ function extractFallbackSuggestions(replyText) {
             'Bạn cần gợi ý sách phù hợp với lứa tuổi hoặc mục đích nào?'
         ];
     }
-    const lower = replyText.toLowerCase();
+    const lower: string = replyText.toLowerCase();
     if (lower.includes('xin chào') || lower.includes('chào bạn')) {
         return [
             'Tôi muốn được gợi ý sách hay',
@@ -225,7 +248,7 @@ function extractFallbackSuggestions(replyText) {
     ];
 }
 
-const scrollToBottom = async () => {
+const scrollToBottom = async (): Promise<void> => {
     await nextTick();
     if (chatBody.value) {
         chatBody.value.scrollTop = chatBody.value.scrollHeight;
@@ -234,10 +257,10 @@ const scrollToBottom = async () => {
 
 watch(messages, scrollToBottom, { deep: true });
 
-const handleSendMessage = async () => {
+const handleSendMessage = async (): Promise<void> => {
     if (!prompt.value.trim() || isTyping.value) return;
 
-    const userMessageText = prompt.value;
+    const userMessageText: string = prompt.value;
     messages.value.push({
         id: generateUniqueId(),
         role: 'user',
@@ -249,87 +272,94 @@ const handleSendMessage = async () => {
     isTyping.value = true; // Báo AI đang soạn
 
     try {
-        // Gọi API endpoint đã tạo ở server/api/chat.post.js
-        const responseData = await $fetch('/api/chat', {
+        // Define expected response structure from API
+        interface ApiResponse {
+          reply_text?: string;
+          noi_dung?: string;
+          goi_y_cau_hoi?: SuggestionItem[];
+          goi_y_sach?: MessageBook[];
+          error_details?: string;
+        }
+
+        const responseData = await $fetch<ApiResponse>('/api/chat', {
             method: 'POST',
             body: { prompt: userMessageText },
         });
 
-        let botReplyText = responseData.reply_text || "Xin lỗi, tôi chưa hiểu ý bạn.";
-        let suggestionsForBot = []; // goi y sach
-        let bookSuggestions = []; // goi y cau hoi bot
-        let booksForBot = [];
-        let noi_dung = responseData?.noi_dung || "";
+        let botReplyText: string = responseData.reply_text || "Xin lỗi, tôi chưa hiểu ý bạn.";
+        let suggestionsForBot: SuggestionItem[] = [];
+        let bookSuggestionsForBot: MessageSuggestion[] = [];
+        let booksForBot: MessageBook[] = [];
+        let noi_dung_bot: string = responseData?.noi_dung || "";
 
         if (responseData.goi_y_cau_hoi && Array.isArray(responseData.goi_y_cau_hoi) && responseData.goi_y_cau_hoi.length > 0) {
-            suggestionsForBot = responseData.goi_y_cau_hoi
+            suggestionsForBot = responseData.goi_y_cau_hoi;
         }
         if (responseData.goi_y_sach && Array.isArray(responseData.goi_y_sach) && responseData.goi_y_sach.length > 0) {
-            // Sử dụng thông tin chi tiết từ goi_y_sach để hiển thị
             booksForBot = responseData.goi_y_sach.map(sach => ({
-                tieu_de: sach.tieu_de,
-                tac_gia: sach.tac_gia,
-                the_loai: sach.the_loai,
-                mo_ta_ngan_gon: sach.mo_ta_ngan_gon,
-                ly_do_phu_hop: sach.ly_do_phu_hop,
-                suggestions: `Hãy cho tôi biết thêm về sách ${sach.tieu_de}`
+                ...sach, // Spread existing properties
+                suggestions: `Hãy cho tôi biết thêm về sách ${sach.tieu_de}` // Add suggestions if not present
             }));
-        } else if (responseData.reply_text) { // Nếu không có sách nhưng có reply_text
-            bookSuggestions = extractFallbackSuggestions(responseData.reply_text).map(s => ({ display: s, fullText: s }));
-        } else { // Trường hợp lỗi hoặc không có gì cả
+        } else if (responseData.reply_text) {
+            bookSuggestionsForBot = extractFallbackSuggestions(responseData.reply_text).map(s => ({ display: s, fullText: s }));
+        } else {
             botReplyText = responseData.error_details || "Có lỗi xảy ra, vui lòng thử lại sau.";
-            bookSuggestions = extractFallbackSuggestions(null).map(s => ({ display: s, fullText: s }));
+            bookSuggestionsForBot = extractFallbackSuggestions(null).map(s => ({ display: s, fullText: s }));
         }
-        if (responseData.error_details) { // Nếu API trả về lỗi cụ thể
+        if (responseData.error_details) {
             botReplyText = `${botReplyText} (Lỗi: ${responseData.error_details})`;
         }
-
 
         messages.value.push({
             id: generateUniqueId(),
             role: 'bot',
             text: botReplyText,
-            bookSuggestions: bookSuggestions,
+            bookSuggestions: bookSuggestionsForBot,
             suggestions: suggestionsForBot,
-            books: booksForBot, // Thêm thông tin sách vào message
-            noi_dung: noi_dung
+            books: booksForBot,
+            noi_dung: noi_dung_bot,
         });
 
-    } catch (error) {
+    } catch (error: any) { // Catch block with typed error
         console.error("Lỗi khi gọi API /api/chat:", error);
         let errorMessage = 'Xin lỗi, đã có lỗi xảy ra khi kết nối với AI.';
-        // Xử lý lỗi từ $fetch (thường có trong error.data)
+
         if (error.data && error.data.message) {
             errorMessage = error.data.message;
         } else if (error.statusMessage) {
             errorMessage = error.statusMessage;
+        } else if (error.message) {
+            errorMessage = error.message;
         }
+
         messages.value.push({
             id: generateUniqueId(),
             role: 'bot',
             text: errorMessage,
             bookSuggestions: extractFallbackSuggestions(null).map(s => ({ display: s, fullText: s })),
-            suggestions: [],
+            suggestions: [], // Ensure suggestions is an empty array
         });
     } finally {
-        isTyping.value = false; // AI đã soạn xong (hoặc lỗi)
-        await scrollToBottom(); // Cuộn lại sau khi AI trả lời
+        isTyping.value = false;
+        await scrollToBottom();
     }
 };
 
-const sendImage = () => {
-    // alert('Chức năng gửi ảnh hiện chưa được hỗ trợ.');
+const sendImage = (): void => {
     messages.value.push({
         id: generateUniqueId(),
         role: 'bot',
         text: 'Xin lỗi, chức năng gửi ảnh hiện chưa được hỗ trợ trong bản demo này.',
-        suggestions: extractFallbackSuggestions(null).map(s => ({ display: s, fullText: s }))
-    })
+        bookSuggestions: extractFallbackSuggestions(null).map(s => ({ display: s, fullText: s })),
+        suggestions: [], // Ensure suggestions is an empty array
+    });
 };
 
-const useSuggestion = (suggestText) => {
-    prompt.value = suggestText;
-    handleSendMessage(); // Tự động gửi tin nhắn khi chọn gợi ý
+const useSuggestion = (suggestText: string | undefined): void => {
+    if (typeof suggestText === 'string') {
+        prompt.value = suggestText;
+        handleSendMessage(); // Tự động gửi tin nhắn khi chọn gợi ý
+    }
 };
 
 // Tự động mở chat lần đầu (có thể bỏ nếu không muốn)
