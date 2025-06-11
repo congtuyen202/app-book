@@ -135,6 +135,51 @@
         </div>
       </div>
     </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-16 md:py-24 bg-muted/50 dark:bg-muted/20">
+      <div class="container mx-auto px-4">
+        <h2 data-aos="fade-up" class="text-3xl md:text-4xl font-bold text-center mb-12">
+          Getting Started is <span class="text-primary">Easy</span>
+        </h2>
+        <div class="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div data-aos="fade-up" data-aos-delay="0" class="flex flex-col items-center text-center p-6">
+            <div class="bg-primary text-primary-foreground rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-4">1</div>
+            <h3 class="text-xl font-semibold mb-2">Sign Up</h3>
+            <p class="text-muted-foreground text-sm">Create your free account in minutes to unlock a world of books.</p>
+          </div>
+          <div data-aos="fade-up" data-aos-delay="150" class="flex flex-col items-center text-center p-6">
+            <div class="bg-primary text-primary-foreground rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-4">2</div>
+            <h3 class="text-xl font-semibold mb-2">Explore & Discover</h3>
+            <p class="text-muted-foreground text-sm">Browse our vast library, find new authors, and get personalized recommendations.</p>
+          </div>
+          <div data-aos="fade-up" data-aos-delay="300" class="flex flex-col items-center text-center p-6">
+            <div class="bg-primary text-primary-foreground rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-4">3</div>
+            <h3 class="text-xl font-semibold mb-2">Read Anywhere</h3>
+            <p class="text-muted-foreground text-sm">Enjoy your books on any device with our customizable and friendly reader.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final Call to Action (CTA) Section -->
+    <section id="final-cta" class="py-20 md:py-32 bg-background text-center">
+      <div class="container mx-auto px-4">
+        <h2 data-aos="zoom-in" class="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 tracking-tight">
+          Ready to Dive Into Your Next Adventure?
+        </h2>
+        <p data-aos="fade-up" data-aos-delay="200" class="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto mb-10">
+          Join MyAppLogo today and start exploring. Your next favorite story awaits!
+        </p>
+        <div data-aos="fade-up" data-aos-delay="400">
+          <NuxtLink to="/auth/register">
+            <Button size="lg" class="px-10 py-3 text-lg">
+              Sign Up For Free
+            </Button>
+          </NuxtLink>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
