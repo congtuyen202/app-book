@@ -29,4 +29,5 @@ export interface Book {
   publisher: string;
   averageRating?: number;
   reviews?: Array<{ userId: string; rating: number; comment: string; date: string }>;
+  language?: string; // Add this line
 }
