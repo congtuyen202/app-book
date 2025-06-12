@@ -1,6 +1,5 @@
 <template>
   <div class="flex flex-col h-[calc(100vh-4rem)]"> <!-- Full height minus header -->
-    <!-- Chat UI will be placed here -->
     <Card class="flex-grow flex flex-col shadow-none border-0 sm:border rounded-none sm:rounded-lg m-0 sm:m-4">
       <CardHeader class="flex flex-row items-center justify-between p-3 sm:p-4 border-b">
         <div class="flex items-center gap-2 sm:gap-2.5">
@@ -8,11 +7,13 @@
               @click="showInfo = true" title="Chat Bot Information" />
           <CardTitle class="text-base sm:text-lg font-semibold">Chat with MyAppBot</CardTitle>
         </div>
-        <!-- No minimize button needed on dedicated page -->
+        <Button variant="outline" size="sm" @click="startNewChat" title="Start New Chat">
+          <IconPlusCircle class="mr-1.5 h-4 w-4" />
+          New Chat
+        </Button>
       </CardHeader>
 
       <CardContent ref="chatBodyRef" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-background">
-        <!-- Message Loop (TransitionGroup) will go here -->
          <TransitionGroup name="message-item" tag="div">
             <div v-for="msg in messages" :key="msg.id" :class="[
                 'rounded-lg py-2 px-3 shadow-sm w-max max-w-[85%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed mb-3 break-words',
@@ -87,20 +88,25 @@
         </Transition>
       </CardContent>
 
-      <CardFooter class="p-2 sm:p-3 border-t flex items-center gap-1.5 sm:gap-2 bg-background">
-         <Input v-model="prompt" :disabled="isTyping"
-            class="flex-1 text-sm sm:text-base py-2 px-3 h-10 sm:h-11"
-            placeholder="Nhập tin nhắn..." aria-label="Chat message input" @keyup.enter="handleSendMessage" />
-        <Button type="button" variant="outline" size="icon"
-            class="h-10 w-10 sm:h-11 sm:w-11 text-muted-foreground hover:text-foreground disabled:opacity-50"
-            @click="sendImage" title="Send image (not supported)" :disabled="isTyping" aria-label="Send image">
-            <IconImage class="w-5 h-5" />
-        </Button>
-        <Button type="submit" :disabled="!prompt.trim() || isTyping"
-            class="h-10 w-16 sm:h-11 sm:w-20 disabled:opacity-60"
-            title="Send message" aria-label="Send message" @click="handleSendMessage">
-            <IconSend class="w-5 h-5" />
-        </Button>
+      <CardFooter class="p-2 sm:p-3 border-t flex flex-col items-center gap-1.5 sm:gap-2 bg-background">
+         <p v-if="limitReachedUnauth" class="text-xs text-destructive text-center w-full mb-1">
+          Message limit reached. Start a new chat or log in.
+        </p>
+        <div class="flex w-full items-center gap-1.5 sm:gap-2">
+            <Input ref="promptInputRef" v-model="prompt" :disabled="isTyping || limitReachedUnauth"
+                class="flex-1 text-sm sm:text-base py-2 px-3 h-10 sm:h-11"
+                placeholder="Nhập tin nhắn..." aria-label="Chat message input" @keyup.enter="handleSendMessage" />
+            <Button type="button" variant="outline" size="icon"
+                class="h-10 w-10 sm:h-11 sm:w-11 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                @click="sendImage" title="Send image (not supported)" :disabled="isTyping || limitReachedUnauth" aria-label="Send image">
+                <IconImage class="w-5 h-5" />
+            </Button>
+            <Button type="submit" :disabled="!prompt.trim() || isTyping || limitReachedUnauth"
+                class="h-10 w-16 sm:h-11 sm:w-20 disabled:opacity-60"
+                title="Send message" aria-label="Send message" @click="handleSendMessage">
+                <IconSend class="w-5 h-5" />
+            </Button>
+        </div>
       </CardFooter>
     </Card>
 
@@ -135,10 +141,9 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { ref, nextTick, watch, onMounted } from 'vue'; // Removed onBeforeUnmount as it's not used yet
+import { ref, nextTick, watch, onMounted } from 'vue';
 import type { Ref } from 'vue';
 
-// Define interfaces
 interface MessageBook {
   tieu_de: string; tac_gia: string; the_loai: string;
   mo_ta_ngan_gon: string; ly_do_phu_hop: string; suggestions?: string;
@@ -150,32 +155,28 @@ interface Message {
   books?: MessageBook[]; bookSuggestions?: MessageSuggestion[]; suggestions?: SuggestionItem[];
 }
 
+const chatHistoryKey = 'chatHistory_myapplogo_v1';
+const REQUEST_LIMIT_UNAUTH_KEY = 'chatRequestCount_unauth_v1';
+const MAX_REQUESTS_UNAUTH = 20;
+
+const requestCountUnauth = ref(0);
+const limitReachedUnauth = ref(false);
+
 const prompt: Ref<string> = ref('');
+const promptInputRef = ref<HTMLInputElement | null>(null); // Changed to allow HTMLInputElement or generic Component instance
 const messages: Ref<Message[]> = ref([]);
 const showInfo: Ref<boolean> = ref(false);
-const chatBodyRef: Ref<HTMLElement | null> = ref(null); // Renamed from chatBody to avoid conflict if default.vue still has it
+const chatBodyRef: Ref<HTMLElement | null> = ref(null);
 const isTyping: Ref<boolean> = ref(false);
 
 const generateUniqueId = (): string => `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
 function extractFallbackSuggestions(replyText?: string | null): string[] {
-    if (!replyText) {
-        return [
-            'Bạn muốn tìm sách thuộc thể loại nào?',
-            'Bạn quan tâm đến tác giả hoặc chủ đề nào?',
-            'Bạn cần gợi ý sách phù hợp với lứa tuổi hoặc mục đích nào?'
-        ];
-    }
+    if (!replyText) { return [ 'Bạn muốn tìm sách thuộc thể loại nào?', 'Bạn quan tâm đến tác giả hoặc chủ đề nào?', 'Bạn cần gợi ý sách phù hợp với lứa tuổi hoặc mục đích nào?' ]; }
     const lower: string = replyText.toLowerCase();
-    if (lower.includes('xin chào') || lower.includes('chào bạn')) {
-        return [ 'Tôi muốn được gợi ý sách hay', 'Bạn có thể giới thiệu sách theo sở thích không?', 'Có sách nào phù hợp với tôi không?' ];
-    }
-    if (lower.includes('thể loại')) {
-        return [ 'Gợi ý sách thể loại trinh thám', 'Tôi thích sách khoa học viễn tưởng', 'Có sách nào về phát triển bản thân không?' ];
-    }
-    if (lower.includes('tác giả')) {
-        return [ 'Giới thiệu sách của tác giả nổi tiếng', 'Tôi muốn tìm sách của Nguyễn Nhật Ánh', 'Có sách nào của Dan Brown không?' ];
-    }
+    if (lower.includes('xin chào') || lower.includes('chào bạn')) { return [ 'Tôi muốn được gợi ý sách hay', 'Bạn có thể giới thiệu sách theo sở thích không?', 'Có sách nào phù hợp với tôi không?' ]; }
+    if (lower.includes('thể loại')) { return [ 'Gợi ý sách thể loại trinh thám', 'Tôi thích sách khoa học viễn tưởng', 'Có sách nào về phát triển bản thân không?' ]; }
+    if (lower.includes('tác giả')) { return [ 'Giới thiệu sách của tác giả nổi tiếng', 'Tôi muốn tìm sách của Nguyễn Nhật Ánh', 'Có sách nào của Dan Brown không?' ]; }
     return [ 'Bạn thích thể loại sách nào?', 'Bạn muốn tìm sách cho mục đích gì?', 'Bạn có muốn gợi ý sách bán chạy không?' ];
 }
 
@@ -186,13 +187,60 @@ const scrollToBottom = async (): Promise<void> => {
     }
 };
 
-watch(messages, scrollToBottom, { deep: true });
+watch(messages, (newMessages) => {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(chatHistoryKey, JSON.stringify(newMessages));
+    }
+    nextTick(() => scrollToBottom());
+}, { deep: true });
+
+const focusPromptInput = async () => {
+  await nextTick();
+  if (promptInputRef.value) {
+    // Assuming promptInputRef.value is either the Input component instance that forwards focus,
+    // or it's the native HTMLInputElement itself.
+    // For Shadcn Vue's Input, it should directly be or forward to HTMLInputElement.
+    try {
+        // If promptInputRef.value is the component instance and it has a focus method
+        if (typeof (promptInputRef.value as any).focus === 'function') {
+             (promptInputRef.value as any).focus();
+        }
+        // If promptInputRef.value is the component instance, try accessing $el (common for Vue 2, less so for Vue 3 setup components)
+        // or if it's directly the HTMLInputElement (common for simple setup components or forwarded refs)
+        else if (promptInputRef.value instanceof HTMLInputElement) {
+            promptInputRef.value.focus();
+        }
+        // If $el exists and is an input element
+        else if ((promptInputRef.value as any).$el && typeof (promptInputRef.value as any).$el.focus === 'function') {
+             (promptInputRef.value as any).$el.focus();
+        }
+        // If $el exists and contains an input element
+        else if ((promptInputRef.value as any).$el && typeof (promptInputRef.value as any).$el.querySelector === 'function') {
+            const inputInside = (promptInputRef.value as any).$el.querySelector('input');
+            if (inputInside) inputInside.focus();
+        } else {
+            console.warn("Could not determine how to focus the prompt input ref.");
+        }
+    } catch (e) {
+        console.warn("Error attempting to focus prompt input:", e);
+    }
+  }
+};
 
 const handleSendMessage = async (): Promise<void> => {
+    if (limitReachedUnauth.value) {
+      messages.value.push({
+        id: generateUniqueId(), role: 'bot',
+        text: "You have reached the message limit for this session. Please start a new chat or log in for more.",
+      });
+      scrollToBottom(); return;
+    }
     if (!prompt.value.trim() || isTyping.value) return;
+
     const userMessageText: string = prompt.value;
     messages.value.push({ id: generateUniqueId(), role: 'user', text: userMessageText });
     prompt.value = '';
+    focusPromptInput(); // Re-focus after sending
     await scrollToBottom();
     isTyping.value = true;
     try {
@@ -203,29 +251,37 @@ const handleSendMessage = async (): Promise<void> => {
         const responseData = await $fetch<ApiResponse>('/api/chat', {
             method: 'POST', body: { prompt: userMessageText },
         });
+        requestCountUnauth.value++;
+        if (typeof window !== 'undefined') localStorage.setItem(REQUEST_LIMIT_UNAUTH_KEY, requestCountUnauth.value.toString());
+        if (requestCountUnauth.value >= MAX_REQUESTS_UNAUTH) limitReachedUnauth.value = true;
+
         let botReplyText: string = responseData.reply_text || "Xin lỗi, tôi chưa hiểu ý bạn.";
         let suggestionsForBot: SuggestionItem[] = [];
         let bookSuggestionsForBot: MessageSuggestion[] = [];
         let booksForBot: MessageBook[] = [];
         let noi_dung_bot: string = responseData?.noi_dung || "";
 
-        if (responseData.goi_y_cau_hoi && responseData.goi_y_cau_hoi.length > 0) {
-            suggestionsForBot = responseData.goi_y_cau_hoi;
-        }
-        if (responseData.goi_y_sach && responseData.goi_y_sach.length > 0) {
-            booksForBot = responseData.goi_y_sach.map(sach => ({ ...sach, suggestions: `Hãy cho tôi biết thêm về sách ${sach.tieu_de}` }));
-        } else if (responseData.reply_text) {
-            bookSuggestionsForBot = extractFallbackSuggestions(responseData.reply_text).map(s => ({ display: s, fullText: s }));
-        } else {
+        if (responseData.goi_y_cau_hoi && responseData.goi_y_cau_hoi.length > 0) suggestionsForBot = responseData.goi_y_cau_hoi;
+        if (responseData.goi_y_sach && responseData.goi_y_sach.length > 0) booksForBot = responseData.goi_y_sach.map(sach => ({ ...sach, suggestions: `Hãy cho tôi biết thêm về sách ${sach.tieu_de}` }));
+        else if (responseData.reply_text) bookSuggestionsForBot = extractFallbackSuggestions(responseData.reply_text).map(s => ({ display: s, fullText: s }));
+        else {
             botReplyText = responseData.error_details || "Có lỗi xảy ra, vui lòng thử lại sau.";
             bookSuggestionsForBot = extractFallbackSuggestions(null).map(s => ({ display: s, fullText: s }));
         }
         if (responseData.error_details) botReplyText = `${botReplyText} (Lỗi: ${responseData.error_details})`;
-        messages.value.push({
+
+        const botMessage: Message = {
             id: generateUniqueId(), role: 'bot', text: botReplyText,
             bookSuggestions: bookSuggestionsForBot, suggestions: suggestionsForBot,
             books: booksForBot, noi_dung: noi_dung_bot,
-        });
+        };
+        messages.value.push(botMessage);
+        if (limitReachedUnauth.value && messages.value[messages.value.length -1].id === botMessage.id) {
+             messages.value.push({
+                 id: generateUniqueId(), role: 'bot',
+                 text: "You have now reached your message limit for this session. To continue, please start a new chat or log in.",
+               });
+        }
     } catch (error: any) {
         console.error("Lỗi khi gọi API /api/chat:", error);
         let errorMessage = 'Xin lỗi, đã có lỗi xảy ra khi kết nối với AI.';
@@ -257,18 +313,51 @@ const useSuggestion = (suggestText: string | undefined): void => {
     }
 };
 
-// Ensure this page uses the default layout unless specified otherwise
-// definePageMeta({ layout: 'default' }); // Or remove if default is implicit
+const startNewChat = () => {
+  messages.value = [];
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(chatHistoryKey);
+    localStorage.removeItem(REQUEST_LIMIT_UNAUTH_KEY);
+  }
+  prompt.value = '';
+  isTyping.value = false;
+  requestCountUnauth.value = 0;
+  limitReachedUnauth.value = false;
+  nextTick(() => {
+    scrollToBottom();
+    focusPromptInput();
+  });
+};
 
-onMounted(() => {
-    // If you need to scroll to bottom on initial load, e.g., if there are pre-loaded messages
-    // scrollToBottom();
+onMounted(async () => {
+  if (typeof window !== 'undefined') {
+    const storedHistory = localStorage.getItem(chatHistoryKey);
+    if (storedHistory) {
+      try {
+        const parsedHistory = JSON.parse(storedHistory) as Message[];
+        if (Array.isArray(parsedHistory) && parsedHistory.every(msg => msg.id && msg.role)) {
+            messages.value = parsedHistory;
+        } else {
+            console.warn("Stored chat history is invalid. Starting fresh.");
+            localStorage.removeItem(chatHistoryKey);
+        }
+      } catch (e) {
+        console.error("Failed to parse chat history:", e);
+        localStorage.removeItem(chatHistoryKey);
+      }
+    }
+    const storedRequestCount = localStorage.getItem(REQUEST_LIMIT_UNAUTH_KEY);
+    if (storedRequestCount) requestCountUnauth.value = parseInt(storedRequestCount, 10) || 0;
+    if (requestCountUnauth.value >= MAX_REQUESTS_UNAUTH) limitReachedUnauth.value = true;
+  }
+  await nextTick();
+  scrollToBottom();
+  focusPromptInput();
 });
 
 </script>
 
 <style>
-/* Chat-specific styles moved from default.vue or new styles */
 .message-item-enter-active { transition: all 0.4s ease-out; }
 .message-item-leave-active { transition: all 0.2s ease-in; }
 .message-item-enter-from { opacity: 0; transform: translateY(20px) scale(0.95); }
@@ -286,7 +375,6 @@ onMounted(() => {
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 .modal-fade-enter-from > div, .modal-fade-leave-to > div { transform: scale(0.90) translateY(15px); }
 
-/* Ensure custom scrollbar styles apply if needed, or rely on browser default / Tailwind plugins */
 .overflow-y-auto::-webkit-scrollbar { width: 6px; }
 .overflow-y-auto::-webkit-scrollbar-track { background: hsl(var(--background)); border-radius: 10px; }
 .overflow-y-auto::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground)); border-radius: 10px; }
