@@ -27,7 +27,8 @@ export const mockBooks: Book[] = [
     ],
     reviews: [
       { userId: 'user1', rating: 5, comment: 'Tuyệt vời!', date: '2023-02-01' }
-    ]
+    ],
+    language: 'vi-VN',
   },
   {
     id: 'book2',
@@ -44,7 +45,8 @@ export const mockBooks: Book[] = [
     sampleChapters: [
       { id: 'ch1_b2_s', chapterNumber: 1, title: 'Lời Thì Thầm Của Biển Cả', content: 'Biển cả luôn ẩn chứa những điều bí ẩn...' }
     ],
-    reviews: []
+    reviews: [],
+    language: 'vi-VN',
   },
   {
     id: 'book3',
@@ -56,5 +58,6 @@ export const mockBooks: Book[] = [
     genre: ['Công nghệ', 'Giáo dục'],
     publicationDate: '2024-05-10',
     publisher: 'NXB Khoa Học Kỹ Thuật',
+    language: 'en-US',
   }
 ];

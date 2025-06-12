@@ -290,6 +290,7 @@ const startSpeech = () => {
   else text = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?[^>]+(>|$)/g, "").replace(/\s+/g, ' ').trim();
   if (!text.trim()) { console.warn("No text to speak."); return; }
   utterance = new SpeechSynthesisUtterance(text);
+  if (book.value && book.value.language) utterance.lang = book.value.language;
   utterance.onstart = () => { isSpeaking.value = true; isPaused.value = false; };
   utterance.onend = () => { isSpeaking.value = false; isPaused.value = false; utterance = null; };
   utterance.onerror = (e) => { console.error('Speech error:', e.error); isSpeaking.value = false; isPaused.value = false; utterance = null; };
@@ -337,25 +338,86 @@ const globalClickHandler = (event: MouseEvent) => {
   const sel = window.getSelection();
   if (tb && !tb.contains(event.target as Node) && (!sel || sel.isCollapsed)) showHighlightToolbar.value = false;
 };
-const applyHighlight = (color: string) => {
+
+const applyHighlight = (newColor: string) => {
   if (!currentRange || !currentSelection || !readerContentArea.value || !currentChapter.value) return;
-  const article = readerContentArea.value.querySelector('article.prose'); if (!article) return;
-  const id = `hl-${Date.now()}`; const span = document.createElement('span');
-  span.className = `highlight-${color}`; span.id = id;
-  try {
-    span.appendChild(currentRange.extractContents()); currentRange.insertNode(span);
+  const newSelectionText = currentSelection.toString().trim();
+  if (!newSelectionText) {
+    showHighlightToolbar.value = false;
     currentSelection.removeAllRanges();
-    saveHighlight({
-      id, bookId: bookId.value, chapterId: currentChapter.value.id, type: typeQuery.value,
-      startContainerPath: getPathTo(currentRange.startContainer, article), startOffset: currentRange.startOffset,
-      endContainerPath: getPathTo(currentRange.endContainer, article), endOffset: currentRange.endOffset,
-      text: span.textContent || "", color, createdAt: Date.now()
-    });
-  } catch (e) { console.error("Error applying highlight:", e); }
-  showHighlightToolbar.value = false;
+    return;
+  }
+
+  const articleEl = readerContentArea.value.querySelector('article.prose');
+  if (!articleEl) return;
+
+  const newRangeToHighlight = currentRange.cloneRange();
+
+  const highlightsKey = getHighlightsStorageKey();
+  let chapterHighlights = JSON.parse(localStorage.getItem(highlightsKey) || '[]') as HighlightData[];
+  const highlightsToRemoveFromStorage: string[] = [];
+
+  for (let i = highlights.value.length - 1; i >= 0; i--) {
+    const existingHlData = highlights.value[i];
+    const existingSpan = document.getElementById(existingHlData.id);
+
+    if (existingSpan) {
+      const existingRange = document.createRange();
+      existingRange.selectNodeContents(existingSpan);
+      const intersects = !(newRangeToHighlight.compareBoundaryPoints(Range.END_TO_START, existingRange) >= 0 ||
+                           newRangeToHighlight.compareBoundaryPoints(Range.START_TO_END, existingRange) <= 0);
+      if (intersects) {
+        highlightsToRemoveFromStorage.push(existingHlData.id);
+        const parent = existingSpan.parentNode;
+        if (parent) {
+          while (existingSpan.firstChild) parent.insertBefore(existingSpan.firstChild, existingSpan);
+          parent.removeChild(existingSpan);
+        }
+      }
+    }
+  }
+
+  if (highlightsToRemoveFromStorage.length > 0) {
+    chapterHighlights = chapterHighlights.filter(hl => !highlightsToRemoveFromStorage.includes(hl.id));
+  }
+
+  const highlightId = `hl-${Date.now()}`;
+  const mainSpan = document.createElement('span');
+  mainSpan.className = `highlight-${newColor}`;
+  mainSpan.id = highlightId;
+
+  try {
+    mainSpan.appendChild(newRangeToHighlight.extractContents());
+    newRangeToHighlight.insertNode(mainSpan);
+
+    const startPath = getPathTo(mainSpan.firstChild || mainSpan, articleEl);
+    const endPath = getPathTo(mainSpan.lastChild || mainSpan, articleEl);
+    const startOffset = 0;
+    const endOffset = mainSpan.lastChild ? (mainSpan.lastChild.textContent?.length || 0) : (mainSpan.textContent?.length || 0) ;
+
+    const newHighlightData: HighlightData = {
+      id: highlightId, bookId: bookId.value, chapterId: currentChapter.value!.id,
+      type: typeQuery.value, startContainerPath: startPath, startOffset: startOffset,
+      endContainerPath: endPath, endOffset: endOffset, text: mainSpan.textContent || "",
+      color: newColor, createdAt: Date.now()
+    };
+    chapterHighlights.push(newHighlightData);
+
+    localStorage.setItem(highlightsKey, JSON.stringify(chapterHighlights));
+    highlights.value = [...chapterHighlights];
+
+  } catch (e) {
+    console.error("Error applying new highlight span:", e);
+  } finally {
+    currentSelection?.removeAllRanges();
+    showHighlightToolbar.value = false;
+    // Re-load highlights to ensure DOM is consistent with stored state after complex ops
+    loadHighlights();
+  }
 };
+
 const getHighlightsStorageKey = () => `readerHighlights-${bookId.value}`;
-const saveHighlight = (hlData: HighlightData) => {
+const saveHighlight = (hlData: HighlightData) => { // This specific saveHighlight is now part of applyHighlight's logic
   const key = getHighlightsStorageKey(); let items = JSON.parse(localStorage.getItem(key) || '[]') as HighlightData[];
   items.push(hlData); localStorage.setItem(key, JSON.stringify(items)); highlights.value.push(hlData);
 };
@@ -365,6 +427,17 @@ const loadHighlights = async () => {
   const key = getHighlightsStorageKey(); const items = JSON.parse(localStorage.getItem(key) || '[]') as HighlightData[];
   const chapHls = items.filter(h => h.chapterId === currentChapter.value!.id && h.type === typeQuery.value);
   highlights.value = chapHls; chapHls.sort((a,b) => a.createdAt - b.createdAt);
+
+  // Clear existing DOM highlights before re-applying to prevent duplicates if content was re-rendered
+  const existingSpans = article.querySelectorAll('span[id^="hl-"]');
+  existingSpans.forEach(s => {
+    const parent = s.parentNode;
+    if(parent) {
+      while(s.firstChild) parent.insertBefore(s.firstChild, s);
+      parent.removeChild(s);
+    }
+  });
+
   for (const hl of chapHls) {
     const startN = getNodeByPath(hl.startContainerPath, article); const endN = getNodeByPath(hl.endContainerPath, article);
     if (startN && endN) {
@@ -372,7 +445,7 @@ const loadHighlights = async () => {
         const r = document.createRange();
         if (hl.startOffset > (startN.textContent?.length || 0) || hl.endOffset > (endN.textContent?.length || 0)) { console.warn("Invalid offsets", hl.id); continue; }
         r.setStart(startN, hl.startOffset); r.setEnd(endN, hl.endOffset);
-        if (document.getElementById(hl.id)) continue;
+        if (document.getElementById(hl.id)) continue; // Should not happen if cleared above
         const s = document.createElement('span'); s.className = `highlight-${hl.color}`; s.id = hl.id;
         if (r.toString().trim() === "" && hl.text.trim() !== "") { console.warn("Empty range", hl.id); continue; }
         s.appendChild(r.extractContents()); r.insertNode(s);
