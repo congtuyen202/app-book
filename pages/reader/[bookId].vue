@@ -155,6 +155,7 @@ const error = ref<Error | null>(null);
 
 const { settings: userSettings } = useReaderSettings();
 
+// TTS State
 const speechSynthesisSupported = ref(false);
 const isSpeaking = ref(false);
 const isPaused = ref(false);
@@ -163,6 +164,8 @@ const availableVoices = ref<SpeechSynthesisVoice[]>([]);
 const selectedVoiceURI = ref<string | undefined>(undefined);
 const voiceSettingsKey = 'readerTtsVoiceURI_v2';
 
+
+// Highlight State
 const showHighlightToolbar = ref(false);
 const toolbarPosition = ref({ top: 0, left: 0 });
 let currentSelection: Selection | null = null;
@@ -232,8 +235,34 @@ const navigateToSelectedChapter = (chapterId: string | undefined) => {
 
 watch(currentChapter, (newChap) => { selectedChapterIdForNavigation.value = newChap?.id; }, { immediate: true });
 
+const populateVoiceList = () => {
+  if (!speechSynthesisSupported.value) return;
+  let voices = speechSynthesis.getVoices();
+  if (voices.length === 0) {
+    if (speechSynthesis.onvoiceschanged === null) { // Assign only if not already assigned to prevent potential issues
+         speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+    return;
+  }
+  availableVoices.value = voices.sort((a, b) => a.name.localeCompare(b.name));
+  const savedVoiceURI = localStorage.getItem(voiceSettingsKey);
+  if (savedVoiceURI && availableVoices.value.find(v => v.voiceURI === savedVoiceURI)) {
+    selectedVoiceURI.value = savedVoiceURI;
+  } else if (book.value?.language) {
+    const currentBookLang = book.value.language.toLowerCase();
+    const currentBookLangBase = currentBookLang.split('-')[0];
+    let preferredVoice = voices.find(v => v.lang.toLowerCase() === currentBookLang && v.default) ||
+                         voices.find(v => v.lang.toLowerCase() === currentBookLang) ||
+                         voices.find(v => v.lang.toLowerCase().startsWith(currentBookLangBase + '-') && v.default) ||
+                         voices.find(v => v.lang.toLowerCase().startsWith(currentBookLangBase + '-'));
+    if (preferredVoice) {
+        selectedVoiceURI.value = preferredVoice.voiceURI;
+    }
+  }
+};
+
 onMounted(async () => {
-  await fetchBookDetails();
+  await fetchBookDetails(); // Fetch book details first for language info
   await fetchChaptersAndSetCurrent();
   if (currentChapter.value) {
     await restoreScrollPosition();
@@ -247,8 +276,10 @@ onMounted(async () => {
   document.addEventListener('click', globalClickHandler);
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     speechSynthesisSupported.value = true;
-    populateVoiceList(); // Initial attempt
-    if (speechSynthesis.onvoiceschanged === null) { // Check if it's null before assigning
+    // Attempt to populate voices immediately after fetchBookDetails and fetchChaptersAndSetCurrent
+    // to ensure book.value.language is available if needed for default selection.
+    populateVoiceList();
+    if (speechSynthesis.onvoiceschanged === null) {
         speechSynthesis.onvoiceschanged = populateVoiceList;
     }
   }
@@ -265,7 +296,7 @@ onBeforeUnmount(() => {
   if (scrollSaveTimeout) clearTimeout(scrollSaveTimeout);
   if (speechSynthesisSupported.value && (speechSynthesis.speaking || speechSynthesis.pending || speechSynthesis.paused)) stopSpeech();
   if (speechSynthesisSupported.value && speechSynthesis.onvoiceschanged === populateVoiceList) {
-    speechSynthesis.onvoiceschanged = null;
+    speechSynthesis.onvoiceschanged = null; // Clean up
   }
 });
 
@@ -317,14 +348,10 @@ const startSpeech = () => {
   if (!text.trim()) { console.warn("No text to speak."); return; }
   utterance = new SpeechSynthesisUtterance(text);
   if (book.value && book.value.language) utterance.lang = book.value.language;
-
   if (selectedVoiceURI.value) {
     const voiceToUse = availableVoices.value.find(v => v.voiceURI === selectedVoiceURI.value);
-    if (voiceToUse) {
-      utterance.voice = voiceToUse;
-    }
+    if (voiceToUse) utterance.voice = voiceToUse;
   }
-
   utterance.onstart = () => { isSpeaking.value = true; isPaused.value = false; };
   utterance.onend = () => { isSpeaking.value = false; isPaused.value = false; utterance = null; };
   utterance.onerror = (e) => { console.error('Speech error:', e.error); isSpeaking.value = false; isPaused.value = false; utterance = null; };
@@ -335,6 +362,18 @@ const resumeSpeech = () => { if (speechSynthesis.paused) { speechSynthesis.resum
 const stopSpeech = () => {
   if (speechSynthesis.speaking || speechSynthesis.pending || speechSynthesis.paused) speechSynthesis.cancel();
   isSpeaking.value = false; isPaused.value = false; utterance = null;
+};
+
+const onVoiceSelected = (voiceURIValue: string | undefined) => {
+  if (voiceURIValue) {
+    localStorage.setItem(voiceSettingsKey, voiceURIValue);
+    selectedVoiceURI.value = voiceURIValue; // v-model handles this, but explicit set is fine.
+    if(isSpeaking.value || isPaused.value) {
+        stopSpeech();
+    }
+  } else {
+    localStorage.removeItem(voiceSettingsKey);
+  }
 };
 
 const getPathTo = (node: Node, root: Node): string => {
@@ -445,13 +484,12 @@ const applyHighlight = (newColor: string) => {
   } finally {
     currentSelection?.removeAllRanges();
     showHighlightToolbar.value = false;
-    // Re-load highlights to ensure DOM is consistent with stored state after complex ops
     loadHighlights();
   }
 };
 
 const getHighlightsStorageKey = () => `readerHighlights-${bookId.value}`;
-const saveHighlight = (hlData: HighlightData) => { // This specific saveHighlight is now part of applyHighlight's logic
+const saveHighlight = (hlData: HighlightData) => {
   const key = getHighlightsStorageKey(); let items = JSON.parse(localStorage.getItem(key) || '[]') as HighlightData[];
   items.push(hlData); localStorage.setItem(key, JSON.stringify(items)); highlights.value.push(hlData);
 };
@@ -462,7 +500,6 @@ const loadHighlights = async () => {
   const chapHls = items.filter(h => h.chapterId === currentChapter.value!.id && h.type === typeQuery.value);
   highlights.value = chapHls; chapHls.sort((a,b) => a.createdAt - b.createdAt);
 
-  // Clear existing DOM highlights before re-applying to prevent duplicates if content was re-rendered
   const existingSpans = article.querySelectorAll('span[id^="hl-"]');
   existingSpans.forEach(s => {
     const parent = s.parentNode;
@@ -479,7 +516,7 @@ const loadHighlights = async () => {
         const r = document.createRange();
         if (hl.startOffset > (startN.textContent?.length || 0) || hl.endOffset > (endN.textContent?.length || 0)) { console.warn("Invalid offsets", hl.id); continue; }
         r.setStart(startN, hl.startOffset); r.setEnd(endN, hl.endOffset);
-        if (document.getElementById(hl.id)) continue; // Should not happen if cleared above
+        if (document.getElementById(hl.id)) continue;
         const s = document.createElement('span'); s.className = `highlight-${hl.color}`; s.id = hl.id;
         if (r.toString().trim() === "" && hl.text.trim() !== "") { console.warn("Empty range", hl.id); continue; }
         s.appendChild(r.extractContents()); r.insertNode(s);
