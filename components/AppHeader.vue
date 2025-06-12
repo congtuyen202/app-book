@@ -11,6 +11,7 @@
         <NuxtLink to="/" class="text-muted-foreground hover:text-primary transition-colors px-3 py-2 rounded-md text-sm font-medium">Home</NuxtLink>
         <NuxtLink to="/books" class="text-muted-foreground hover:text-primary transition-colors px-3 py-2 rounded-md text-sm font-medium">Books</NuxtLink>
         <NuxtLink to="/about" class="text-muted-foreground hover:text-primary transition-colors px-3 py-2 rounded-md text-sm font-medium">About</NuxtLink>
+        <NuxtLink to="/chat" class="text-muted-foreground hover:text-primary transition-colors px-3 py-2 rounded-md text-sm font-medium">Chat Support</NuxtLink>
 
         <template v-if="isLoggedIn">
           <NuxtLink to="/profile" class="text-muted-foreground hover:text-primary transition-colors px-3 py-2 rounded-md text-sm font-medium">Profile</NuxtLink>
@@ -53,6 +54,7 @@
           <NuxtLink to="/" class="text-muted-foreground hover:bg-accent hover:text-primary transition-colors block px-3 py-2 rounded-md text-base font-medium" @click="closeMobileMenu">Home</NuxtLink>
           <NuxtLink to="/books" class="text-muted-foreground hover:bg-accent hover:text-primary transition-colors block px-3 py-2 rounded-md text-base font-medium" @click="closeMobileMenu">Books</NuxtLink>
           <NuxtLink to="/about" class="text-muted-foreground hover:bg-accent hover:text-primary transition-colors block px-3 py-2 rounded-md text-base font-medium" @click="closeMobileMenu">About</NuxtLink>
+          <NuxtLink to="/chat" class="text-muted-foreground hover:bg-accent hover:text-primary transition-colors block px-3 py-2 rounded-md text-base font-medium" @click="closeMobileMenu">Chat Support</NuxtLink>
 
           <template v-if="isLoggedIn">
             <NuxtLink to="/profile" class="text-muted-foreground hover:bg-accent hover:text-primary transition-colors block px-3 py-2 rounded-md text-base font-medium" @click="closeMobileMenu">Profile</NuxtLink>
