@@ -29,6 +29,20 @@
           <Button v-if="speechSynthesisSupported && (isSpeaking || isPaused)" @click="stopSpeech" variant="outline" size="icon" title="Stop speech">
             <IconStopCircle class="h-5 w-5" />
           </Button>
+          <Select v-if="speechSynthesisSupported && availableVoices.length > 0" v-model="selectedVoiceURI" @update:modelValue="onVoiceSelected">
+            <SelectTrigger class="h-9 text-sm min-w-[120px] sm:min-w-[150px] max-w-[200px]" title="Select voice">
+              <SelectValue placeholder="Select voice..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="voice in availableVoices"
+                :key="voice.voiceURI"
+                :value="voice.voiceURI"
+              >
+                <span class="truncate">{{ voice.name }} ({{ voice.lang }})</span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
           <NuxtLink to="/settings">
             <Button variant="outline" size="icon" title="Reading Settings">
               <IconSettings class="h-5 w-5" />
@@ -145,6 +159,9 @@ const speechSynthesisSupported = ref(false);
 const isSpeaking = ref(false);
 const isPaused = ref(false);
 let utterance: SpeechSynthesisUtterance | null = null;
+const availableVoices = ref<SpeechSynthesisVoice[]>([]);
+const selectedVoiceURI = ref<string | undefined>(undefined);
+const voiceSettingsKey = 'readerTtsVoiceURI_v2';
 
 const showHighlightToolbar = ref(false);
 const toolbarPosition = ref({ top: 0, left: 0 });
@@ -228,7 +245,13 @@ onMounted(async () => {
     readerContentArea.value.addEventListener('mouseup', handleTextSelection);
   }
   document.addEventListener('click', globalClickHandler);
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) speechSynthesisSupported.value = true;
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    speechSynthesisSupported.value = true;
+    populateVoiceList(); // Initial attempt
+    if (speechSynthesis.onvoiceschanged === null) { // Check if it's null before assigning
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+  }
 });
 
 onBeforeUnmount(() => {
@@ -241,6 +264,9 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', globalClickHandler);
   if (scrollSaveTimeout) clearTimeout(scrollSaveTimeout);
   if (speechSynthesisSupported.value && (speechSynthesis.speaking || speechSynthesis.pending || speechSynthesis.paused)) stopSpeech();
+  if (speechSynthesisSupported.value && speechSynthesis.onvoiceschanged === populateVoiceList) {
+    speechSynthesis.onvoiceschanged = null;
+  }
 });
 
 watch(() => [route.query.chapterId, route.query.type], async ([newChapterId, newType], [oldChapterId, oldType]) => {
@@ -291,6 +317,14 @@ const startSpeech = () => {
   if (!text.trim()) { console.warn("No text to speak."); return; }
   utterance = new SpeechSynthesisUtterance(text);
   if (book.value && book.value.language) utterance.lang = book.value.language;
+
+  if (selectedVoiceURI.value) {
+    const voiceToUse = availableVoices.value.find(v => v.voiceURI === selectedVoiceURI.value);
+    if (voiceToUse) {
+      utterance.voice = voiceToUse;
+    }
+  }
+
   utterance.onstart = () => { isSpeaking.value = true; isPaused.value = false; };
   utterance.onend = () => { isSpeaking.value = false; isPaused.value = false; utterance = null; };
   utterance.onerror = (e) => { console.error('Speech error:', e.error); isSpeaking.value = false; isPaused.value = false; utterance = null; };
