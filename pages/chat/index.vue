@@ -1,114 +1,116 @@
 <template>
-  <div class="flex flex-col h-[calc(100vh-4rem)]"> <!-- Full height minus header -->
-    <Card class="flex-grow flex flex-col shadow-none border-0 sm:border rounded-none sm:rounded-lg m-0 sm:m-4">
-      <CardHeader class="flex flex-row items-center justify-between p-3 sm:p-4 border-b">
-        <div class="flex items-center gap-2 sm:gap-2.5">
-          <IconMessageCircle class="w-6 h-6 sm:w-7 sm:h-7 text-primary cursor-pointer hover:opacity-80"
-              @click="showInfo = true" title="Chat Bot Information" />
-          <CardTitle class="text-base sm:text-lg font-semibold">Chat with MyAppBot</CardTitle>
-        </div>
-        <Button variant="outline" size="sm" @click="startNewChat" title="Start New Chat">
-          <IconPlusCircle class="mr-1.5 h-4 w-4" />
-          New Chat
-        </Button>
-      </CardHeader>
+  <div class="flex flex-col h-[calc(100vh-4rem)] bg-muted/20 dark:bg-muted/10 pt-0 sm:pt-4 pb-0 sm:pb-4">
+    <div class="container mx-auto flex flex-grow items-stretch h-full"> <!-- Modified this line -->
+      <Card class="flex-grow flex flex-col shadow-none border-0 sm:border rounded-none sm:rounded-lg w-full">
+        <CardHeader class="flex flex-row items-center justify-between p-3 sm:p-4 border-b">
+          <div class="flex items-center gap-2 sm:gap-2.5">
+            <IconMessageCircle class="w-6 h-6 sm:w-7 sm:h-7 text-primary cursor-pointer hover:opacity-80"
+                @click="showInfo = true" title="Chat Bot Information" />
+            <CardTitle class="text-base sm:text-lg font-semibold">Chat with MyAppBot</CardTitle>
+          </div>
+          <Button variant="outline" size="sm" @click="startNewChat" title="Start New Chat">
+            <IconPlusCircle class="mr-1.5 h-4 w-4" />
+            New Chat
+          </Button>
+        </CardHeader>
 
-      <CardContent ref="chatBodyRef" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-background">
-         <TransitionGroup name="message-item" tag="div">
-            <div v-for="msg in messages" :key="msg.id" :class="[
-                'rounded-lg py-2 px-3 shadow-sm w-max max-w-[85%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed mb-3 break-words',
-                msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground ml-auto rounded-br-none'
-                    : 'bg-muted text-muted-foreground mr-auto rounded-bl-none border',
-            ]">
-                <div class="whitespace-pre-wrap">{{ msg.text }}</div>
-                <div class="whitespace-pre-wrap" v-if="msg.noi_dung">{{ msg.noi_dung }}</div>
+        <CardContent ref="chatBodyRef" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-background">
+          <TransitionGroup name="message-item" tag="div">
+              <div v-for="msg in messages" :key="msg.id" :class="[
+                  'rounded-lg py-2 px-3 shadow-sm w-max max-w-[85%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed mb-3 break-words',
+                  msg.role === 'user'
+                      ? 'bg-primary text-primary-foreground ml-auto rounded-br-none'
+                      : 'bg-muted text-muted-foreground mr-auto rounded-bl-none border',
+              ]">
+                  <div class="whitespace-pre-wrap">{{ msg.text }}</div>
+                  <div class="whitespace-pre-wrap" v-if="msg.noi_dung">{{ msg.noi_dung }}</div>
 
-                <div v-if="msg.role === 'bot' && msg.books && msg.books.length > 0"
-                    class="mt-2.5 space-y-2">
-                    <div v-for="(book, bIdx) in msg.books" :key="`book-${bIdx}`"
-                        @click="book.suggestions ? useSuggestion(book.suggestions) : '' "
-                        class="p-2 border border-border rounded-md bg-background/50 text-xs text-foreground"
-                        :class="{'cursor-pointer hover:bg-accent hover:shadow-sm transition-all duration-200 ease-out text-left': book.suggestions}">
-                        <p class="font-semibold text-primary/90">
-                            {{ book.tieu_de }} - {{ book.tac_gia }}
-                        </p>
-                        <p class="mt-0.5"><span class="font-medium">Thể loại:</span> {{ book.the_loai }}</p>
-                        <p class="mt-0.5"><span class="font-medium">Mô tả:</span> {{ book.mo_ta_ngan_gon }}</p>
-                        <p class="mt-0.5"><span class="font-medium">Lý do:</span> {{ book.ly_do_phu_hop }}</p>
-                    </div>
-                </div>
+                  <div v-if="msg.role === 'bot' && msg.books && msg.books.length > 0"
+                      class="mt-2.5 space-y-2">
+                      <div v-for="(book, bIdx) in msg.books" :key="`book-${bIdx}`"
+                          @click="book.suggestions ? useSuggestion(book.suggestions) : '' "
+                          class="p-2 border border-border rounded-md bg-background/50 text-xs text-foreground"
+                          :class="{'cursor-pointer hover:bg-accent hover:shadow-sm transition-all duration-200 ease-out text-left': book.suggestions}">
+                          <p class="font-semibold text-primary/90">
+                              {{ book.tieu_de }} - {{ book.tac_gia }}
+                          </p>
+                          <p class="mt-0.5"><span class="font-medium">Thể loại:</span> {{ book.the_loai }}</p>
+                          <p class="mt-0.5"><span class="font-medium">Mô tả:</span> {{ book.mo_ta_ngan_gon }}</p>
+                          <p class="mt-0.5"><span class="font-medium">Lý do:</span> {{ book.ly_do_phu_hop }}</p>
+                      </div>
+                  </div>
 
-                <div v-if="msg.role === 'bot' && msg.bookSuggestions && msg.bookSuggestions.length > 0"
-                    class="mt-2 flex flex-wrap gap-1.5">
-                    <Button v-for="(suggest, sidx) in msg.bookSuggestions" :key="`bs-${sidx}`"
-                        variant="outline" size="sm"
-                        class="text-xs h-auto py-1 px-2.5"
-                        @click="useSuggestion(typeof suggest === 'string' ? suggest : suggest.fullText || suggest.display)">
-                        {{ typeof suggest === 'string' ? suggest : suggest.display }}
-                    </Button>
-                </div>
-                <ul v-if="msg.role === 'bot' && msg.suggestions && msg.suggestions.length > 0 && !(msg.bookSuggestions && msg.bookSuggestions.length >0)"
-                    class="mt-2 flex flex-wrap gap-1.5 list-none p-0">
-                    <li v-for="(suggest, sidx) in msg.suggestions" :key="`s-${sidx}`">
-                          <Button variant="outline" size="sm"
-                            class="text-xs h-auto py-1 px-2.5"
-                            @click="useSuggestion(typeof suggest === 'string' ? suggest : suggest.fullText || suggest.display)">
-                            {{ typeof suggest === 'string' ? suggest : suggest.display }}
-                        </Button>
-                    </li>
-                </ul>
-            </div>
-        </TransitionGroup>
-        <Transition name="message-item">
-            <div v-if="isTyping" key="typing-indicator"
-                class="rounded-lg py-2 px-3.5 shadow-sm w-max max-w-[85%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed mb-3 bg-muted text-muted-foreground mr-auto rounded-bl-none border flex items-center space-x-1.5">
-                <div class="typing-dot bg-primary"></div>
-                <div class="typing-dot bg-primary" style="animation-delay: 0.2s;"></div>
-                <div class="typing-dot bg-primary" style="animation-delay: 0.4s;"></div>
-            </div>
-        </Transition>
-        <Transition name="message-item">
-            <div v-if="messages.length === 0 && !isTyping" key="welcome-message"
-                class="rounded-lg py-2.5 px-3.5 shadow-sm w-max max-w-[90%] text-sm sm:text-base leading-relaxed mb-3 bg-muted text-muted-foreground mr-auto rounded-bl-none border">
-                <div class="font-semibold mb-1.5">Xin chào! 👋 Tôi là Chat Bot Tư Vấn Sách.</div>
-                <div>Bạn muốn tìm sách gì hôm nay? Hãy chọn một gợi ý hoặc đặt câu hỏi cho tôi nhé:</div>
-                <div class="mt-2.5 flex flex-col items-start gap-2">
-                    <Button variant="outline" size="sm" class="text-xs h-auto py-1 px-2.5 text-left" @click="useSuggestion('Tôi thích thể loại sách kinh tế chính trị, bạn có thể gợi ý cho tôi không?')">
-                        Gợi ý sách kinh tế chính trị?
-                    </Button>
-                    <Button variant="outline" size="sm" class="text-xs h-auto py-1 px-2.5 text-left" @click="useSuggestion('Tôi quan tâm đến sách của tác giả Nguyễn Nhật Ánh, bạn có thể giới thiệu không?')">
-                        Sách của Nguyễn Nhật Ánh?
-                    </Button>
-                    <Button variant="outline" size="sm" class="text-xs h-auto py-1 px-2.5 text-left" @click="useSuggestion('Tôi muốn tìm sách phù hợp với lứa tuổi thiếu nhi, bạn có gợi ý nào không?')">
-                        Sách cho thiếu nhi?
-                    </Button>
-                </div>
-            </div>
-        </Transition>
-      </CardContent>
+                  <div v-if="msg.role === 'bot' && msg.bookSuggestions && msg.bookSuggestions.length > 0"
+                      class="mt-2 flex flex-wrap gap-1.5">
+                      <Button v-for="(suggest, sidx) in msg.bookSuggestions" :key="`bs-${sidx}`"
+                          variant="outline" size="sm"
+                          class="text-xs h-auto py-1 px-2.5"
+                          @click="useSuggestion(typeof suggest === 'string' ? suggest : suggest.fullText || suggest.display)">
+                          {{ typeof suggest === 'string' ? suggest : suggest.display }}
+                      </Button>
+                  </div>
+                  <ul v-if="msg.role === 'bot' && msg.suggestions && msg.suggestions.length > 0 && !(msg.bookSuggestions && msg.bookSuggestions.length >0)"
+                      class="mt-2 flex flex-wrap gap-1.5 list-none p-0">
+                      <li v-for="(suggest, sidx) in msg.suggestions" :key="`s-${sidx}`">
+                            <Button variant="outline" size="sm"
+                              class="text-xs h-auto py-1 px-2.5"
+                              @click="useSuggestion(typeof suggest === 'string' ? suggest : suggest.fullText || suggest.display)">
+                              {{ typeof suggest === 'string' ? suggest : suggest.display }}
+                          </Button>
+                      </li>
+                  </ul>
+              </div>
+          </TransitionGroup>
+          <Transition name="message-item">
+              <div v-if="isTyping" key="typing-indicator"
+                  class="rounded-lg py-2 px-3.5 shadow-sm w-max max-w-[85%] sm:max-w-[80%] text-sm sm:text-base leading-relaxed mb-3 bg-muted text-muted-foreground mr-auto rounded-bl-none border flex items-center space-x-1.5">
+                  <div class="typing-dot bg-primary"></div>
+                  <div class="typing-dot bg-primary" style="animation-delay: 0.2s;"></div>
+                  <div class="typing-dot bg-primary" style="animation-delay: 0.4s;"></div>
+              </div>
+          </Transition>
+          <Transition name="message-item">
+              <div v-if="messages.length === 0 && !isTyping" key="welcome-message"
+                  class="rounded-lg py-2.5 px-3.5 shadow-sm w-max max-w-[90%] text-sm sm:text-base leading-relaxed mb-3 bg-muted text-muted-foreground mr-auto rounded-bl-none border">
+                  <div class="font-semibold mb-1.5">Xin chào! 👋 Tôi là Chat Bot Tư Vấn Sách.</div>
+                  <div>Bạn muốn tìm sách gì hôm nay? Hãy chọn một gợi ý hoặc đặt câu hỏi cho tôi nhé:</div>
+                  <div class="mt-2.5 flex flex-col items-start gap-2">
+                      <Button variant="outline" size="sm" class="text-xs h-auto py-1 px-2.5 text-left" @click="useSuggestion('Tôi thích thể loại sách kinh tế chính trị, bạn có thể gợi ý cho tôi không?')">
+                          Gợi ý sách kinh tế chính trị?
+                      </Button>
+                      <Button variant="outline" size="sm" class="text-xs h-auto py-1 px-2.5 text-left" @click="useSuggestion('Tôi quan tâm đến sách của tác giả Nguyễn Nhật Ánh, bạn có thể giới thiệu không?')">
+                          Sách của Nguyễn Nhật Ánh?
+                      </Button>
+                      <Button variant="outline" size="sm" class="text-xs h-auto py-1 px-2.5 text-left" @click="useSuggestion('Tôi muốn tìm sách phù hợp với lứa tuổi thiếu nhi, bạn có gợi ý nào không?')">
+                          Sách cho thiếu nhi?
+                      </Button>
+                  </div>
+              </div>
+          </Transition>
+        </CardContent>
 
-      <CardFooter class="p-2 sm:p-3 border-t flex flex-col items-center gap-1.5 sm:gap-2 bg-background">
-         <p v-if="limitReachedUnauth" class="text-xs text-destructive text-center w-full mb-1">
-          Message limit reached. Start a new chat or log in.
-        </p>
-        <div class="flex w-full items-center gap-1.5 sm:gap-2">
-            <Input ref="promptInputRef" v-model="prompt" :disabled="isTyping || limitReachedUnauth"
-                class="flex-1 text-sm sm:text-base py-2 px-3 h-10 sm:h-11"
-                placeholder="Nhập tin nhắn..." aria-label="Chat message input" @keyup.enter="handleSendMessage" />
-            <Button type="button" variant="outline" size="icon"
-                class="h-10 w-10 sm:h-11 sm:w-11 text-muted-foreground hover:text-foreground disabled:opacity-50"
-                @click="sendImage" title="Send image (not supported)" :disabled="isTyping || limitReachedUnauth" aria-label="Send image">
-                <IconImage class="w-5 h-5" />
-            </Button>
-            <Button type="submit" :disabled="!prompt.trim() || isTyping || limitReachedUnauth"
-                class="h-10 w-16 sm:h-11 sm:w-20 disabled:opacity-60"
-                title="Send message" aria-label="Send message" @click="handleSendMessage">
-                <IconSend class="w-5 h-5" />
-            </Button>
-        </div>
-      </CardFooter>
-    </Card>
+        <CardFooter class="p-2 sm:p-3 border-t flex flex-col items-center gap-1.5 sm:gap-2 bg-background">
+          <p v-if="limitReachedUnauth" class="text-xs text-destructive text-center w-full mb-1">
+            Message limit reached. Start a new chat or log in.
+          </p>
+          <div class="flex w-full items-center gap-1.5 sm:gap-2">
+              <Input ref="promptInputRef" v-model="prompt" :disabled="isTyping || limitReachedUnauth"
+                  class="flex-1 text-sm sm:text-base py-2 px-3 h-10 sm:h-11"
+                  placeholder="Nhập tin nhắn..." aria-label="Chat message input" @keyup.enter="handleSendMessage" />
+              <Button type="button" variant="outline" size="icon"
+                  class="h-10 w-10 sm:h-11 sm:w-11 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  @click="sendImage" title="Send image (not supported)" :disabled="isTyping || limitReachedUnauth" aria-label="Send image">
+                  <IconImage class="w-5 h-5" />
+              </Button>
+              <Button type="submit" :disabled="!prompt.trim() || isTyping || limitReachedUnauth"
+                  class="h-10 w-16 sm:h-11 sm:w-20 disabled:opacity-60"
+                  title="Send message" aria-label="Send message" @click="handleSendMessage">
+                  <IconSend class="w-5 h-5" />
+              </Button>
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
 
     <Transition name="modal-fade">
       <div v-if="showInfo"
@@ -163,7 +165,7 @@ const requestCountUnauth = ref(0);
 const limitReachedUnauth = ref(false);
 
 const prompt: Ref<string> = ref('');
-const promptInputRef = ref<HTMLInputElement | null>(null); // Changed to allow HTMLInputElement or generic Component instance
+const promptInputRef = ref<HTMLInputElement | null>(null);
 const messages: Ref<Message[]> = ref([]);
 const showInfo: Ref<boolean> = ref(false);
 const chatBodyRef: Ref<HTMLElement | null> = ref(null);
@@ -197,24 +199,16 @@ watch(messages, (newMessages) => {
 const focusPromptInput = async () => {
   await nextTick();
   if (promptInputRef.value) {
-    // Assuming promptInputRef.value is either the Input component instance that forwards focus,
-    // or it's the native HTMLInputElement itself.
-    // For Shadcn Vue's Input, it should directly be or forward to HTMLInputElement.
     try {
-        // If promptInputRef.value is the component instance and it has a focus method
         if (typeof (promptInputRef.value as any).focus === 'function') {
              (promptInputRef.value as any).focus();
         }
-        // If promptInputRef.value is the component instance, try accessing $el (common for Vue 2, less so for Vue 3 setup components)
-        // or if it's directly the HTMLInputElement (common for simple setup components or forwarded refs)
         else if (promptInputRef.value instanceof HTMLInputElement) {
             promptInputRef.value.focus();
         }
-        // If $el exists and is an input element
         else if ((promptInputRef.value as any).$el && typeof (promptInputRef.value as any).$el.focus === 'function') {
              (promptInputRef.value as any).$el.focus();
         }
-        // If $el exists and contains an input element
         else if ((promptInputRef.value as any).$el && typeof (promptInputRef.value as any).$el.querySelector === 'function') {
             const inputInside = (promptInputRef.value as any).$el.querySelector('input');
             if (inputInside) inputInside.focus();
@@ -240,7 +234,7 @@ const handleSendMessage = async (): Promise<void> => {
     const userMessageText: string = prompt.value;
     messages.value.push({ id: generateUniqueId(), role: 'user', text: userMessageText });
     prompt.value = '';
-    focusPromptInput(); // Re-focus after sending
+    focusPromptInput();
     await scrollToBottom();
     isTyping.value = true;
     try {
