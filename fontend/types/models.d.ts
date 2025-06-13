@@ -39,9 +39,9 @@ export interface BlogPost {
   summary: string;
   content: string; // Full content, can be HTML or Markdown
   imageUrl?: string;
-  author: string;
-  publishedDate: string; // ISO string format
-  category?: string;
+  author_name: string; // Changed from author
+  published_date: string; // Changed from publishedDate
+  category_name?: string; // Changed from category
   tags?: string[];
   metaTitle?: string;
   metaDescription?: string;

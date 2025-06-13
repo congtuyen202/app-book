@@ -7,20 +7,18 @@
       <Meta property="og:description" :content="seoDescription" />
       <Meta property="og:image" :content="post?.imageUrl || 'https://source.unsplash.com/random/1200x630/?book,reading'" />
       <Meta property="og:type" content="article" />
-      <Meta property="article:published_time" :content="post?.publishedDate" />
+      <Meta property="article:published_time" :content="post?.published_date" /> {/* Changed to published_date */}
       <Meta v-for="tag in post?.tags" :key="tag" property="article:tag" :content="tag" />
-      <!-- Add more meta tags as needed, e.g., canonical URL -->
     </Head>
 
     <div v-if="pendingPost" class="container mx-auto py-8 px-4 animate-pulse">
-      <!-- Skeleton Loader for Detail Page -->
       <div class="max-w-3xl mx-auto">
-        <div class="h-10 bg-muted rounded w-3/4 mb-4"></div> {/* Title Placeholder */}
+        <div class="h-10 bg-muted rounded w-3/4 mb-4"></div>
         <div class="flex items-center space-x-4 mb-6">
-          <div class="h-4 bg-muted rounded w-1/4"></div> {/* Author Placeholder */}
-          <div class="h-4 bg-muted rounded w-1/4"></div> {/* Date Placeholder */}
+          <div class="h-4 bg-muted rounded w-1/4"></div>
+          <div class="h-4 bg-muted rounded w-1/4"></div>
         </div>
-        <div class="aspect-[16/9] bg-muted rounded-lg mb-8"></div> {/* Image Placeholder */}
+        <div class="aspect-[16/9] bg-muted rounded-lg mb-8"></div>
         <div class="space-y-3">
           <div class="h-4 bg-muted rounded w-full"></div>
           <div class="h-4 bg-muted rounded w-full"></div>
@@ -46,9 +44,9 @@
         <NuxtLink to="/blog" class="text-sm text-primary hover:underline mb-2 inline-block">&larr; Back to Blog</NuxtLink>
         <h1 class="text-4xl md:text-5xl font-bold tracking-tight mb-4">{{ post.title }}</h1>
         <div class="text-sm text-muted-foreground">
-          <span>By {{ post.author }}</span> &bull;
-          <span>Published on {{ formatDate(post.publishedDate) }}</span>
-          <span v-if="post.category"> &bull; In <Badge variant="outline">{{ post.category }}</Badge></span>
+          <span>By {{ post.author_name }}</span> &bull; {/* Changed to author_name */}
+          <span>Published on {{ formatDate(post.published_date) }}</span> {/* Changed to published_date */}
+          <span v-if="post.category_name"> &bull; In <Badge variant="outline">{{ post.category_name }}</Badge></span> {/* Changed to category_name */}
         </div>
         <div v-if="post.tags && post.tags.length > 0" class="mt-4">
           <Badge v-for="tag in post.tags" :key="tag" variant="secondary" class="mr-1.5 mb-1.5">{{ tag }}</Badge>
@@ -96,43 +94,79 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-// useRoute, useHead, useAsyncData, showError, $fetch, definePageMeta are auto-imported by Nuxt
+import { useRoute } from 'vue-router';
 import type { BlogPost } from '~/types/models';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-// Card components are used in the skeleton loader, but not directly in the script for the loaded post.
-// If you were to use Card for the loaded post itself, you'd import it here.
+import { useNuxtApp } from '#app'; // For $axios
 
+const { $axios } = useNuxtApp();
 const route = useRoute();
 const slug = route.params.slug as string;
+
+const getPostBySlugQuery = `
+  query GetBookaiBlogBySlug($slug: String!) {
+    bookaiBlogBySlug(slug: $slug) {
+      id
+      slug
+      title
+      summary
+      content
+      imageUrl
+      author_name
+      published_date
+      category_name
+      tags
+      metaTitle
+      metaDescription
+    }
+  }
+`;
 
 const { data: post, pending: pendingPost, error: fetchError } = await useAsyncData<BlogPost | undefined>(
   `blog-post-${slug}`,
   async () => {
     try {
-      const posts = await $fetch<BlogPost[]>('/api/blog/posts');
-      const foundPost = posts.find(p => p.slug === slug);
-      if (!foundPost) {
-        // Use Nuxt's showError to trigger 404 page
-        // It's important that showError is called in a way that Nuxt can handle it for proper SSR/client error pages.
-        // Throwing an error that Nuxt's error handling can catch is also an option.
-        // Using fatal: true will stop client-side navigation and show the error page.
+      const response: any = await $axios.post('http://localhost:8000/graphql', { // Ensure this URL is correct
+        query: getPostBySlugQuery,
+        variables: { slug: slug },
+      });
+
+      if (response.data.errors) {
+        const errorMessage = response.data.errors.map((e: any) => e.message).join('\n');
+        // Check if GraphQL itself indicates "not found" via a specific error code or message pattern if any
+        // For now, we assume if data.bookaiBlogBySlug is null, it's a 404.
+        if (response.data.data?.bookaiBlogBySlug === null) {
+            showError({ statusCode: 404, statusMessage: 'Blog Post Not Found', fatal: true });
+            return undefined;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const fetchedPost = response.data?.data?.bookaiBlogBySlug;
+      if (!fetchedPost) {
         showError({ statusCode: 404, statusMessage: 'Blog Post Not Found', fatal: true });
         return undefined;
       }
-      return foundPost;
-    } catch (apiError: any) {
-      console.error("API error fetching posts for slug:", slug, apiError);
+      return fetchedPost as BlogPost;
+
+    } catch (e: any) {
+      console.error(`Failed to fetch blog post with slug ${slug}:`, e);
       let statusCode = 500;
-      let statusMessage = 'Error loading blog post.';
-      if (apiError.isH3Error) { // Check if it's an H3Error from the API route
-          statusCode = apiError.statusCode;
-          statusMessage = apiError.statusMessage || apiError.message;
-      } else if (apiError.statusCode) { // Check for $fetch error object
-          statusCode = apiError.statusCode;
-          statusMessage = apiError.data?.message || apiError.statusMessage || apiError.message;
+      let statusMessage = 'Failed to load post.';
+      if (e.isH3Error) { // H3Error from our API routes
+        statusCode = e.statusCode;
+        statusMessage = e.statusMessage || e.message;
+      } else if (e.response && e.response.status) { // Axios error
+        statusCode = e.response.status;
+        statusMessage = e.response.data?.message || e.message;
+      } else if (e.message) {
+        statusMessage = e.message;
       }
-      showError({ statusCode: statusCode, statusMessage: statusMessage, fatal: true });
+      // Avoid overriding a 404 that might have been set if showError was already called by the try block
+      if (!(fetchError.value && fetchError.value.statusCode === 404)) {
+         showError({ statusCode, statusMessage, fatal: true });
+      }
       return undefined;
     }
   }
@@ -152,37 +186,15 @@ const formatDate = (dateString: string | undefined): string => {
 const seoTitle = computed(() => post.value?.metaTitle || post.value?.title || 'Blog Post - MyAppLogo');
 const seoDescription = computed(() => post.value?.metaDescription || post.value?.summary?.substring(0,160) || 'Read this interesting blog post from MyAppLogo.');
 
-// useHead is handled by the <Head> component in the template for dynamic values.
-// If you needed to set it programmatically for more complex logic, you could do:
-// useHead({
-//   title: seoTitle, // This will be a ref
-//   meta: () => [ // Use a function to make meta tags reactive to post.value changes
-//     { name: 'description', content: seoDescription.value },
-//     { property: 'og:title', content: seoTitle.value },
-//     { property: 'og:description', content: seoDescription.value },
-//     { property: 'og:image', content: post.value?.imageUrl || 'https://source.unsplash.com/random/1200x630/?book,reading' },
-//     { property: 'og:type', content: 'article' },
-//     { property: 'article:published_time', content: post.value?.publishedDate },
-//     ...(post.value?.tags?.map(tag => ({ property: 'article:tag', content: tag })) || []),
-//   ],
-// });
-
-// Ensure the default layout is used, which includes AppHeader and AppFooter
 definePageMeta({
   layout: "default",
 });
 </script>
 
 <style scoped>
-/* Styles for this page, if any, beyond Tailwind prose classes */
-/* For example, if the ad placeholder needs specific styling */
-.lg\:w-64 { width: 16rem; } /* 256px */
-.xl\:w-72 { width: 18rem; } /* 288px */
+.lg\:w-64 { width: 16rem; }
+.xl\:w-72 { width: 18rem; }
 
-/* Ensure prose styles apply correctly in dark mode if not handled by global typography setup */
-.dark .prose-invert {
-  /* color: hsl(var(--foreground)); */ /* Usually handled by prose-invert */
-}
 .dark .prose-invert h1,
 .dark .prose-invert h2,
 .dark .prose-invert h3,
@@ -194,7 +206,7 @@ definePageMeta({
 .dark .prose-invert ul,
 .dark .prose-invert li,
 .dark .prose-invert em {
-   color: hsl(var(--muted-foreground)); /* Or a slightly lighter gray than main foreground */
+   color: hsl(var(--muted-foreground));
 }
 .dark .prose-invert a {
   color: hsl(var(--primary));
@@ -202,5 +214,4 @@ definePageMeta({
 .dark .prose-invert a:hover {
   color: hsl(var(--primary) / 0.8);
 }
-
 </style>
