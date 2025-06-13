@@ -17,13 +17,13 @@ export default defineNuxtConfig({
   apollo: {
     clients: {
       default: {
-        httpEndpoint: process.env.APOLLO_CLIENT_API_URL || 'fallback_url_if_not_set'
+        httpEndpoint: process.env.APOLLO_CLIENT_API_URL || "fallback_url_if_not_set"
       }
     },
   },
   runtimeConfig: {
     // Keys khai báo ở đây chỉ có ở server-side
-    googleAiApiKey: '', // Sẽ được ghi đè bởi biến môi trường NUXT_GOOGLE_AI_API_KEY
+    googleAiApiKey: "", // Sẽ được ghi đè bởi biến môi trường NUXT_GOOGLE_AI_API_KEY
     // public: {
     //   // Keys khai báo ở đây sẽ có cả ở client-side (không nên để API key ở đây)
     // }
