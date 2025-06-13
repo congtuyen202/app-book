@@ -10,9 +10,16 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
 
-  modules: ["nuxt-lucide-icons"],
+  modules: ["@nuxtjs/apollo", "nuxt-lucide-icons"],
   lucide: {
     namePrefix: "Icon",
+  },
+  apollo: {
+    clients: {
+      default: {
+        httpEndpoint: process.env.APOLLO_CLIENT_API_URL || 'fallback_url_if_not_set'
+      }
+    },
   },
   runtimeConfig: {
     // Keys khai báo ở đây chỉ có ở server-side

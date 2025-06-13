@@ -12,6 +12,7 @@
   "dependencies": {
     "@google/genai": "^1.1.0",
     "@google/generative-ai": "^0.24.1",
+    "@nuxtjs/apollo": "^4.0.1-rc.5",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.1.6",
     "@vueuse/core": "^13.3.0",

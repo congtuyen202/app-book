@@ -79,16 +79,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import type { BlogPost } from '~/types/models';
+import { ref, computed, watch } from 'vue';
+import { gql, useQuery } from '#imports';
+import type { BlogPost, BookaiBlogsData } from '~/types/models'; // Updated import
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useNuxtApp } from '#app'; // For $axios
 
-const { $axios } = useNuxtApp();
-
-const listPostsQuery = `
+const GET_BLOG_POSTS = gql`
   query GetBookaiBlogs($first: Int!, $page: Int) {
     bookaiBlogs(first: $first, page: $page) {
       data {
@@ -118,67 +116,83 @@ const posts = ref<BlogPost[]>([]);
 const paginatorInfo = ref<any>(null);
 const allPostsLoaded = ref(false);
 
-const pending = ref(false); // Manual pending state for data fetching
-const error = ref<Error | null>(null); // Manual error state
+// Reactive variables for useQuery
+const queryVariables = computed(() => ({
+  first: 6,
+  page: currentPage.value,
+}));
 
-async function fetchBlogPosts(pageToFetch: number = 1) {
-  if (pageToFetch === 1) {
-    posts.value = [];
-    allPostsLoaded.value = false;
-  }
-  pending.value = true;
-  error.value = null;
-  try {
-    const response: any = await $axios.post(
-      // Ensure this URL is correct for your Laravel GraphQL endpoint
-      // If running locally via `php artisan serve`, it's likely http://127.0.0.1:8000/graphql
-      // If using Sail or another Docker setup, it might be http://localhost/graphql or similar
-      'http://localhost:8000/graphql',
-      {
-        query: listPostsQuery,
-        variables: {
-          first: 6, // Fetch 6 items per page for a 3-column layout
-          page: pageToFetch,
-        },
-      }
-    );
+// Use useQuery with reactive variables and type annotation
+const { result, loading: pending, error, fetchMore } = useQuery<BookaiBlogsData>(GET_BLOG_POSTS, queryVariables);
 
-    if (response.data.errors) {
-      throw new Error(response.data.errors.map((e: any) => e.message).join('\n'));
-    }
+// Watch for changes in the result and update posts and paginatorInfo
+watch(result, (newResult) => {
+  if (newResult?.bookaiBlogs?.data) { // Check for data array
+    const newBlogPosts = newResult.bookaiBlogs.data;
+    const newPaginatorInfo = newResult.bookaiBlogs.paginatorInfo;
 
-    const result = response.data?.data?.bookaiBlogs;
-    if (result && result.data) {
-      if (pageToFetch === 1) {
-        posts.value = result.data;
-      } else {
-        posts.value.push(...result.data);
-      }
-      paginatorInfo.value = result.paginatorInfo;
-      if (!result.paginatorInfo?.hasMorePages) {
-        allPostsLoaded.value = true;
-      }
-      currentPage.value = pageToFetch;
+    if (currentPage.value === 1 || !paginatorInfo.value) {
+      posts.value = [...newBlogPosts];
     } else {
-      if (pageToFetch === 1) posts.value = [];
-      allPostsLoaded.value = true;
+      // Append new items, preventing duplicates if result contains all items so far
+      const existingPostIds = new Set(posts.value.map(p => p.id));
+      const uniqueNewItems = newBlogPosts.filter(p => !existingPostIds.has(p.id));
+      posts.value.push(...uniqueNewItems);
     }
-  } catch (e: any) {
-    console.error('Failed to fetch blog posts:', e);
-    error.value = e;
-    if (pageToFetch === 1) posts.value = [];
-  } finally {
-    pending.value = false;
+
+    if (newPaginatorInfo) {
+      paginatorInfo.value = newPaginatorInfo;
+      allPostsLoaded.value = !newPaginatorInfo.hasMorePages;
+    }
+
+  } else if (error.value) {
+    posts.value = [];
+    allPostsLoaded.value = true;
+  } else if (!pending.value && !newResult && currentPage.value === 1) {
+    posts.value = [];
+    allPostsLoaded.value = true;
   }
-}
+}, { immediate: true, deep: true });
 
-onMounted(() => {
-  fetchBlogPosts(1);
-});
 
-const loadMorePosts = () => {
-  if (paginatorInfo.value?.hasMorePages && !pending.value) { // Check pending to avoid multiple calls
-    fetchBlogPosts(currentPage.value + 1);
+const loadMorePosts = async () => {
+  if (paginatorInfo.value?.hasMorePages && !pending.value) {
+    const nextPage = currentPage.value + 1;
+    // Try to use fetchMore if available and correctly typed by #imports
+    if (typeof fetchMore === 'function') {
+      try {
+        await fetchMore({
+          variables: {
+            page: nextPage,
+          },
+          updateQuery: (previousResult: any, { fetchMoreResult }: any) => {
+            if (!fetchMoreResult?.bookaiBlogs) return previousResult;
+            // Ensure previousResult.bookaiBlogs.data is an array
+            const prevData = previousResult.bookaiBlogs?.data || [];
+            return {
+              ...previousResult,
+              bookaiBlogs: {
+                ...previousResult.bookaiBlogs,
+                data: [
+                  ...prevData,
+                  ...fetchMoreResult.bookaiBlogs.data,
+                ],
+                paginatorInfo: fetchMoreResult.bookaiBlogs.paginatorInfo,
+              },
+            };
+          },
+        });
+        currentPage.value = nextPage; // Update current page after successful fetchMore
+      } catch (e) {
+        console.error('Error using fetchMore:', e);
+        // error ref from useQuery should capture this
+      }
+    } else {
+      // Fallback if fetchMore is not available or not working as expected:
+      // simply increment currentPage. The watch effect on `result` (due to reactive queryVariables)
+      // will handle updating the posts. The watch logic needs to be robust for this.
+      currentPage.value = nextPage;
+    }
   }
 };
 
