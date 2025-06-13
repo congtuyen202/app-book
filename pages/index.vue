@@ -45,7 +45,7 @@
     </section>
 
     <!-- Key Features Section -->
-    <section id="features" class="py-16 md:py-24 bg-background">
+    <section id="features" class="py-16 md:py-24 bg-background overflow-x-hidden">
       <div class="container mx-auto px-4">
         <h2 data-aos="fade-up" class="text-3xl md:text-4xl font-bold text-center mb-12">
           Why <span class="text-primary">MyAppLogo</span>?
@@ -71,7 +71,7 @@
     </section>
 
     <!-- Explore Genres Section (Placeholder) -->
-    <section id="genres" class="py-16 md:py-24 bg-muted/50 dark:bg-muted/20">
+    <section id="genres" class="py-16 md:py-24 bg-muted/50 dark:bg-muted/20 overflow-x-hidden">
       <div class="container mx-auto px-4">
         <h2 data-aos="fade-up" class="text-3xl md:text-4xl font-bold text-center mb-12">
           Explore Popular <span class="text-primary">Genres</span>
@@ -96,7 +96,7 @@
     </section>
 
     <!-- Testimonials Section (Placeholder) -->
-    <section id="testimonials" class="py-16 md:py-24 bg-background">
+    <section id="testimonials" class="py-16 md:py-24 bg-background overflow-x-hidden">
       <div class="container mx-auto px-4">
         <h2 data-aos="fade-up" class="text-3xl md:text-4xl font-bold text-center mb-12">
           What Our <span class="text-primary">Readers Say</span>
@@ -137,7 +137,7 @@
     </section>
 
     <!-- How It Works Section -->
-    <section id="how-it-works" class="py-16 md:py-24 bg-muted/50 dark:bg-muted/20">
+    <section id="how-it-works" class="py-16 md:py-24 bg-muted/50 dark:bg-muted/20 overflow-x-hidden">
       <div class="container mx-auto px-4">
         <h2 data-aos="fade-up" class="text-3xl md:text-4xl font-bold text-center mb-12">
           Getting Started is <span class="text-primary">Easy</span>
@@ -163,7 +163,7 @@
     </section>
 
     <!-- Final Call to Action (CTA) Section -->
-    <section id="final-cta" class="py-20 md:py-32 bg-background text-center">
+    <section id="final-cta" class="py-20 md:py-32 bg-background text-center overflow-x-hidden">
       <div class="container mx-auto px-4">
         <h2 data-aos="zoom-in" class="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 tracking-tight">
           Ready to Dive Into Your Next Adventure?
